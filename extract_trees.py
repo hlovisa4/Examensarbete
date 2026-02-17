@@ -4,7 +4,7 @@ Split a LAS/LAZ point cloud into one file per instance, using an extra dimension
 named 'instance_pred'.
 
 Usage:
-  python split_instances.py input.las --outdir instances_out --skip -1 4294967295 --compress
+  python extract_trees.py input.las --outdir instances_out --skip -1 4294967295 --compress
 
 Notes:
 - If your instance_pred is stored as uint32, "no-instance" is often 4294967295.

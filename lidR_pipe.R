@@ -3,7 +3,8 @@ library(ggplot2)
 library(RCSF)
 
 #Inspect the data
-las <- readLAS("C:/Users/Lovisa/Downloads/lovisa/lovisa/240829_ALS_Matrice300_Svb.las",  filter = "-set_withheld_flag 0")
+las <- readLAS("C:/Users/digit/Downloads/Examensarbete/Data/las_polygon/240829_ALS_Matrice300_Svb_clipped.las",  filter = "-set_withheld_flag 0")
+
 col <- height.colors(50)
 print(las)
 las_check(las)
@@ -59,14 +60,29 @@ ttops
 plot(ttops, col = "black", add = TRUE, cex = 0.5)
 
 # Segment trees using dalponte
-las_seg <- segment_trees(las = nlas, algorithm = li2012(dt1=1.4) ) #dalponte2016(chm = schm, treetops = ttops)
-
+#las_seg <- segment_trees(las = nlas, algorithm = li2012(dt1=1.4) )
+las_seg <- segment_trees(las = nlas, algorithm = dalponte2016(chm = schm, treetops = ttops) )
 # Count number of trees detected and segmented
 length(unique(las_seg$treeID) |> na.omit())
-#> [1] 935
-#> 
-#> # Visualize all trees
-#plot(las, color = "treeID")
+
+las_seg <- add_lasattribute(
+  las_seg,
+  las_seg$treeID,
+  name = "instance_pred",
+  desc = "Predicted instance ID")
+
+# Check
+names(las_seg)
+las_seg$instance_pred[is.na(las_seg$instance_pred)] <- -1
+unique(las_seg$instance_pred) |> head()
+plot(las_seg, color = "instance_pred")
+
+las_final <- unnormalize_height(las_seg)
+
+writeLAS(las_final, file= "C:/Users/digit/Downloads/Examensarbete/Results/lidr_segmentation.las" )
+
+
+
 
 
 #Extract positions:
