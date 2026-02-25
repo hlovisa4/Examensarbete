@@ -4,7 +4,7 @@ Split a LAS/LAZ point cloud into one file per instance, using an extra dimension
 named 'instance_pred'.
 
 Usage:
-  python extract_trees.py input.las --outdir instances_out --skip -1 4294967295 --compress
+  python extract_trees.py input.las --outdir instances_out --skip -1 4294967295 
 
 Notes:
 - If your instance_pred is stored as uint32, "no-instance" is often 4294967295.
@@ -22,7 +22,7 @@ import laspy
 def split_by_instance(
     in_path: Path,
     out_dir: Path,
-    instance_field: str = "instance_pred",
+    instance_field: str = "treeID",
     skip_values: list[int] | None = None,
     min_points: int = 1,
     compress: bool = False,
@@ -43,7 +43,7 @@ def split_by_instance(
     if inst.ndim != 1:
         inst = inst.reshape(-1)
 
-    scores = np.asarray(getattr(las, "treeID")).reshape(-1)
+    scores = None
 
     # Determine which instance IDs to process
     unique_ids = np.unique(inst)
@@ -62,12 +62,26 @@ def split_by_instance(
 
         sub = las[mask]  # subsets while preserving point format + extra dims
 
-        suffix = ".laz" if compress else ".las"
-        out_path = out_dir / f"{in_path.stem}__instance_{int(iid)}__n{n}{suffix}"
+        if scores is not None:
+            inst_scores = scores[mask]
+            inst_scores = inst_scores[np.isfinite(inst_scores)]
+            if inst_scores.size > 0:
+                score_val = float(inst_scores.mean())
+            else:
+                score_val = float("nan")
 
+            score_str = f"__score_{int(score_val)}"
+        else:
+            score_str = ""
+
+        suffix = ".laz" if compress else ".las"
+        out_path = (
+        out_dir
+        / f"{in_path.stem}__instance_{int(iid)}__n{n}{score_str}{suffix}")
         # Write (optionally compressed if lazrs/laszip backend is available)
         sub.write(str(out_path))
         written += 1
+        print(written)
 
     print(f"Done. Wrote {written} instance files to: {out_dir}")
 
