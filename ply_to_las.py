@@ -10,8 +10,8 @@ import numpy as np
 import laspy
 import matplotlib.pyplot as plt
 
-ply_path = r"C:\Users\digit\Downloads\731160_7134030fixedname_noisysegments.ply"
-out_las  = r"C:\Users\digit\Downloads\731160_7134030fixedname_noisysegments.las"
+ply_path = r"C:/Users/digit/Downloads/Examensarbete/Results/test_it3/round_3_noisy_score/731200_7133950fixedname_noisysegments.ply"
+out_las  = r"C:/Users/digit/Downloads/Examensarbete/Results/test_it3/round_3_noisy_score/731200_7133950fixedname_noisysegments.las"
 
 ply = PlyData.read(ply_path)
 v = ply["vertex"]

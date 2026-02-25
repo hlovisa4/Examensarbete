@@ -9,13 +9,11 @@ def stream_transfer_fixed(
     unknown_label=-1, eps=1e-6
 ):
     als = laspy.read(als_path)
-    print(als.header)
-
     # Build ALS KD-tree
     als_xyz = np.column_stack((
-        np.asarray(als.x, np.float32),
-        np.asarray(als.y, np.float32),
-        np.asarray(als.z, np.float32),
+        np.asarray(als.x, np.float64),
+        np.asarray(als.y, np.float64),
+        np.asarray(als.z, np.float64),
     ))
     def extent_str(xyz):
         mn = xyz.min(axis=0)
@@ -52,9 +50,9 @@ def stream_transfer_fixed(
             it = 0
             for points in f.chunk_iterator(chunk_size):
                 pts = np.column_stack((
-                    np.asarray(points.x, np.float32),
-                    np.asarray(points.y, np.float32),
-                    np.asarray(points.z, np.float32),
+                    np.asarray(points.x, np.float64),
+                    np.asarray(points.y, np.float64),
+                    np.asarray(points.z, np.float64),
                 ))
                 dists, idx = tree.query(pts, k=k, workers=-1)
                 print(dists[0])
@@ -113,7 +111,7 @@ if __name__ == "__main__":
     stream_transfer_fixed(
         als_path=r"C:/Users/digit/Downloads/Examensarbete/Results/lidr_segmentation.las",
         tls_path=r"C:/Users/digit/Downloads/Examensarbete/Data/radarTowerTLS_2023/R1/RadarTower001.las",
-        out_path=r"C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_lidr.las",
+        out_path=r"C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_lidr34.las",
         chunk_size=500_000,  # start smaller on Windows
         k=7,
         max_dist=1.5,

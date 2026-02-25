@@ -3,7 +3,7 @@ library(ggplot2)
 library(RCSF)
 
 #Inspect the data
-las <- readLAS("C:/Users/digit/Downloads/Examensarbete/Data/las_polygon/240829_ALS_Matrice300_Svb_clipped.las",  filter = "-set_withheld_flag 0")
+las <- readLAS("C:/Users/digit/Downloads/Examensarbete/Data/las_polygon/240829_ALS_Matrice300_Svb_clipped.las",  filter = "-set_withheld_flag 0 -drop_z_above 297")
 
 col <- height.colors(50)
 print(las)
@@ -15,7 +15,7 @@ las_check(las)
 
 #Ground classification
 mycsf <- csf(sloop_smooth = FALSE, class_threshold = 0.5, cloth_resolution = 0.5, time_step = 0.65)
-las_csf <- classify_ground(las, mycsf)
+las_csf <- classify_ground(las1, mycsf)
 #plot(las_csf, color = "Classification", size = 3, bg = "white") 
 #visualise a cross section to evaluate the classification:
 p1 <- c(731300, 7134000)
@@ -29,7 +29,7 @@ ggplot(payload(las_tr), aes(X,Z, color = Classification)) +
   scale_color_gradientn(colours = height.colors(50))
 
 ##Create a digital terrain model
-dtm_tin <- rasterize_terrain(las_csf, res = 1, algorithm = tin())
+#dtm_tin <- rasterize_terrain(las_csf, res = 1, algorithm = tin())
 #plot_dtm3d(dtm_tin, bg = "white") 
 
 #Height normalisation

@@ -43,6 +43,8 @@ def split_by_instance(
     if inst.ndim != 1:
         inst = inst.reshape(-1)
 
+    scores = np.asarray(getattr(las, "treeID")).reshape(-1)
+
     # Determine which instance IDs to process
     unique_ids = np.unique(inst)
 

@@ -1,7 +1,7 @@
 library(lidR)
 library(RCSF)
 
-las <- readLAS("C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS.las") 
+las <- readLAS("C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_lidr.las") 
 print(las)
 length(unique(las$instance_pred))
 
