@@ -6,9 +6,10 @@ def stream_transfer_fixed(
     als_path, tls_path, out_path,
     chunk_size=500_000, k=7, max_dist=0.6,
     semantic_dim="semantic_pred", instance_dim="instance_pred",
-    unknown_label=-1, eps=1e-6
+    unknown_label=-2, eps=1e-6
 ):
     als = laspy.read(als_path)
+    dist_lst = []
     # Build ALS KD-tree
     als_xyz = np.column_stack((
         np.asarray(als.x, np.float64),
@@ -20,7 +21,6 @@ def stream_transfer_fixed(
         mx = xyz.max(axis=0)
         return f"min={mn}, max={mx}, span={mx-mn}"
 
-    print("ALS extent:", extent_str(als_xyz))
 
     tree = cKDTree(als_xyz)
 
@@ -35,7 +35,6 @@ def stream_transfer_fixed(
 
     with laspy.open(tls_path) as f:
         header = f.header.copy()
-        print(header)
 
         # 🔹 Add extra dims if they don't exist
         #header.add_extra_dim(laspy.ExtraBytesParams(
@@ -45,7 +44,6 @@ def stream_transfer_fixed(
         header.add_extra_dim(laspy.ExtraBytesParams(
                 name=instance_dim, type=np.int32
             ))
-        print(header)
         with laspy.open(out_path, mode="w", header=header) as writer:
             it = 0
             for points in f.chunk_iterator(chunk_size):
@@ -56,6 +54,7 @@ def stream_transfer_fixed(
                 ))
                 dists, idx = tree.query(pts, k=k, workers=-1)
                 print(dists[0])
+                dist_lst.append(np.mean(dists))
                 ok = dists[:, 0] <= max_dist
                 print(sum(ok))
 
@@ -104,15 +103,15 @@ def stream_transfer_fixed(
                 it += 1
                 print(f"Done with iteration {it}")
 
-
+    print([round(float(d), 3) for d in dist_lst])
     print("Done:", out_path)
 
 if __name__ == "__main__":
     stream_transfer_fixed(
         als_path=r"C:/Users/digit/Downloads/Examensarbete/Results/lidr_segmentation.las",
-        tls_path=r"C:/Users/digit/Downloads/Examensarbete/Data/radarTowerTLS_2023/R1/RadarTower001.las",
-        out_path=r"C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_lidr34.las",
+        tls_path=r"C:/Users/digit/Downloads/Examensarbete/Data/radarTower001_clipped.las",
+        out_path=r"C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_lidr_260304.las",
         chunk_size=500_000,  # start smaller on Windows
         k=7,
-        max_dist=1.5,
+        max_dist=2,
     )
