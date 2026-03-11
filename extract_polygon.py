@@ -14,10 +14,22 @@ polygon_shape = gdf.geometry.iloc[0]
 # Print the coordinates (External Ring)
 poly_xy = list(polygon_shape.exterior.coords)
 
+cx, cy = 731340, 7133960
+r = 30
+
+# Define the 4 corners of the square
+poly_xy = [
+    (cx - r, cy - r), # Bottom-left
+    (cx + r, cy - r), # Bottom-right
+    (cx + r, cy + r), # Top-right
+    (cx - r, cy + r), # Top-left
+    (cx - r, cy - r)  # Back to start
+]
+
 # 1. Paths - Ensure these are correct for your machine
 in_las  = Path(r"C:/Users/digit/Downloads/Examensarbete/Data/radarTowerTLS_2023/R1/radarTower001.las")
 #in_las  = Path(r"C:/Users/digit/Downloads/Examensarbete/Results/TLS_thin.las")
-out_las = Path(r"C:/Users/digit/Downloads/Examensarbete/Results/radarTower001_clipped.las")
+out_las = Path(r"C:/Users/digit/Downloads/Examensarbete/Results/radarTower001_clipped_2.las")
 
 # Create output directory if it doesn't exist
 out_las.parent.mkdir(parents=True, exist_ok=True)

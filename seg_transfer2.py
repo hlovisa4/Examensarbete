@@ -29,7 +29,7 @@ def stream_transfer_fixed(
     if instance_dim not in als.point_format.dimension_names:
         raise ValueError(f"ALS missing '{instance_dim}'")
 
-    #als_sem = np.asarray(getattr(als, semantic_dim))
+    als_sem = np.asarray(getattr(als, semantic_dim))
     als_ins = np.asarray(getattr(als, instance_dim))
 
 
@@ -37,9 +37,9 @@ def stream_transfer_fixed(
         header = f.header.copy()
 
         # 🔹 Add extra dims if they don't exist
-        #header.add_extra_dim(laspy.ExtraBytesParams(
-           # name=semantic_dim, type=np.int32
-           # ))
+        header.add_extra_dim(laspy.ExtraBytesParams(
+           name=semantic_dim, type=np.int32
+            ))
 
         header.add_extra_dim(laspy.ExtraBytesParams(
                 name=instance_dim, type=np.int32
@@ -60,25 +60,25 @@ def stream_transfer_fixed(
 
                 w = 1.0 / np.maximum(dists, eps)
 
-                #sem_neighbors = als_sem[idx] ## lista med alla nn's seg labels 
+                sem_neighbors = als_sem[idx] ## lista med alla nn's seg labels 
                 ins_neighbors = als_ins[idx]
 
-                #sem_pred = np.empty(len(points), dtype=np.int32)
+                sem_pred = np.empty(len(points), dtype=np.int32)
                 ins_pred = np.empty(len(points), dtype=np.int32)
 
                 for i in range(len(points)):
                     # semantic weighted mode
-                    #labs = sem_neighbors[i]
+                    labs = sem_neighbors[i]
                     ws = w[i]
-                    #uniq, inv = np.unique(labs, return_inverse=True)
-                    #sem_pred[i] = uniq[np.argmax(np.bincount(inv, weights=ws))]  ####
+                    uniq, inv = np.unique(labs, return_inverse=True)
+                    sem_pred[i] = uniq[np.argmax(np.bincount(inv, weights=ws))]  ####
 
                     # instance weighted mode
                     labs2 = ins_neighbors[i]
                     uniq2, inv2 = np.unique(labs2, return_inverse=True)
                     ins_pred[i] = uniq2[np.argmax(np.bincount(inv2, weights=ws))]
 
-                #sem_pred[~ok] = unknown_label
+                sem_pred[~ok] = unknown_label
                 ins_pred[~ok] = unknown_label
                 out_points = laspy.ScaleAwarePointRecord.zeros(len(points), header = header)
 
@@ -89,7 +89,7 @@ def stream_transfer_fixed(
                         out_points[dim] = points[dim]
 
                 # now set extras
-                #out_points[semantic_dim] = sem_pred
+                out_points[semantic_dim] = sem_pred
                 out_points[instance_dim] = ins_pred
 
                 writer.write_points(out_points)
@@ -108,9 +108,9 @@ def stream_transfer_fixed(
 
 if __name__ == "__main__":
     stream_transfer_fixed(
-        als_path=r"C:/Users/digit/Downloads/Examensarbete/Results/lidr_segmentation.las",
-        tls_path=r"C:/Users/digit/Downloads/Examensarbete/Data/radarTower001_clipped.las",
-        out_path=r"C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_lidr_260304.las",
+        als_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/output/731340_7133960fixedname_round1.las",
+        tls_path=r"C:/Users/digit/Downloads/Examensarbete/Results/radarTower001_clipped_2.las",
+        out_path=r"C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_ff3d_prel.las",
         chunk_size=500_000,  # start smaller on Windows
         k=7,
         max_dist=2,

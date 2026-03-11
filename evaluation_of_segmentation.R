@@ -1,35 +1,88 @@
 library(lidR)
-library(dplyr)
 library(sf)
+library(dplyr)
 
+# -----------------------------
+# INPUT FILES
+# -----------------------------
+las_file <- "C:/Users/digit/Downloads/Examensarbete/Results/lidr_segmentation_heightnorm.las"
+ref_file <- "C:/Users/digit/Downloads/Examensarbete/Data/TreesTowerFoot240829.gpkg"
+out_file <- "C:/Users/digit/Downloads/Examensarbete/Results/lidr_matched_trees.gpkg"
 
-las_filt <- filter_poi(las_seg_dal, "instance_pred" != -1)
-metrics <- crown_metrics(las_filt, ~list(z_max = max(Z), centroid_x = mean(X), centroid_y = mean(Y)))
-seg_sf <- st_as_sf(metrics, coords = c("centroid_x","centroid_y"), crs = st_crs(3006))
-ref_sf <- st_read("C:/Users/Lovisa/Downloads/TreesTowerFoot240829.gpkg", quiet = TRUE)
+max_dist <- 2   # maximum allowed distance (m)
 
-idx <- st_nearest_feature(seg_sf, ref_sf)
+# -----------------------------
+# READ DATA
+# -----------------------------
+las <- readLAS(las_file)
+ref <- st_read(ref_file)
 
+# ensure reference is projected
+if (st_is_longlat(ref)) {
+  stop("Reference file must be in projected coordinates (meters)")
+}
 
-###Setup input data
-lidr_las <- readLAS()
+# -----------------------------
+# COMPUTE LAS TREE CENTROIDS
+# -----------------------------
+las_df <- as.data.frame(las@data)
 
+tree_centroids <- las_df %>%
+  group_by(treeID) %>%
+  summarise(
+    x = mean(X),
+    y = mean(Y)
+  )
 
-ref_sf <- st_read("C:/Users/Lovisa/Downloads/TreesTowerFoot240829.gpkg", quiet = TRUE)
+tree_centroids_sf <- st_as_sf(tree_centroids, coords = c("x","y"), crs = st_crs(ref))
 
+# -----------------------------
+# COMPUTE TREE HEIGHTS
+# -----------------------------
+tree_heights <- las_df %>%
+  group_by(treeID) %>%
+  arrange(desc(Z)) %>%
+  slice_head(n = 1) %>%
+  summarise(height = mean(Z))
 
+# merge centroid + height
+las_trees <- tree_centroids %>%
+  left_join(tree_heights, by = "treeID")
 
-###Get TP
-max_dist <- 3
+las_trees_sf <- st_as_sf(las_trees, coords = c("x","y"), crs = st_crs(ref))
 
-idx <- st_nearest_feature(seg_sf, ref_sf)
-seg_sf$ref_id_nn <- idx
+# -----------------------------
+# FIND NEAREST LAS TREE FOR EACH REF TREE
+# -----------------------------
+nearest_index <- st_nearest_feature(ref, las_trees_sf)
 
-# distance to its nearest reference point
-seg_sf$dist_m <- as.numeric(st_distance(seg_sf, ref_sf[idx, ], by_element = TRUE))
+nearest_dist <- st_distance(ref, las_trees_sf[nearest_index,], by_element = TRUE)
+nearest_dist <- as.numeric(nearest_dist)
 
-# consider it a valid match only if within threshold
-seg_sf$matched <- seg_sf$dist_m <= max_dist
+# -----------------------------
+# APPLY DISTANCE FILTER
+# -----------------------------
+matched <- nearest_dist <= max_dist
+
+ref$matched <- as.integer(matched)
+ref$matched_dist <- nearest_dist
+ref$matched_id <- NA
+ref$matched_height <- NA
+
+ref$matched_id[matched] <- las_trees$treeID[nearest_index[matched]]
+
+# -----------------------------
+# COMPUTE HEIGHT RATIO
+# -----------------------------
+ref$matched_height[matched] <-
+  las_trees$height[nearest_index[matched]] / ref$H_TLS[matched]
+
+# -----------------------------
+# SAVE OUTPUT
+# -----------------------------
+st_write(ref, out_file, delete_dsn = TRUE)
+
+print("Matching complete.")
 
 #Calculate TP, FN
 matched_refs <- unique(seg_sf$ref_id_nn[seg_sf$matched])
@@ -50,8 +103,11 @@ seg_sf %>%
 
 
 ##Plotting false matches and GT positions
-false_sf <- seg_sf[seg_sf$matched == FALSE, ]
+true_sf <- ref[ref$matched == TRUE, ]
+false_sf <- ref[ref$matched == FALSE, ]
+chm <- rasterize_canopy(las = nlas, res = 0.5, algorithm = p2r(0.15))
 plot(chm, col = col)
-points(st_coordinates(seg_sf), col = "black", add = TRUE, cex = 0.5)
-points(st_coordinates(false_sf), col = "red", add = TRUE, cex = 0.7)
-points(st_coordinates(ref_sf), col = "yellow", add = TRUE, cex = 0.4)
+points(st_coordinates(tree_centroids_sf), col = "black", add = TRUE, cex = 0.5)
+points(st_coordinates(true_sf), col = "purple", add = TRUE, cex = 0.7)
+points(st_coordinates(false_sf), col = "black", add = TRUE, cex = 0.7)
+points(st_coordinates(ref), col = "black", add = TRUE, cex = 0.4)

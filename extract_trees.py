@@ -5,10 +5,6 @@ named 'instance_pred'.
 
 Usage:
   python extract_trees.py input.las --outdir instances_out --skip -1 4294967295 
-
-Notes:
-- If your instance_pred is stored as uint32, "no-instance" is often 4294967295.
-- This script keeps the original header and point format, and subsets points safely.
 """
 
 from __future__ import annotations
