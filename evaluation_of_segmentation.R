@@ -3,18 +3,19 @@ library(sf)
 library(dplyr)
 
 # -----------------------------
-# INPUT FILES
+# Read Files
 # -----------------------------
-las_file <- "C:/Users/digit/Downloads/Examensarbete/Results/lidr_segmentation_heightnorm.las"
+las_file <- "C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/remerged_ff3d_segmented_cloud_plus_missing_points.las"
 ref_file <- "C:/Users/digit/Downloads/Examensarbete/Data/TreesTowerFoot240829.gpkg"
-out_file <- "C:/Users/digit/Downloads/Examensarbete/Results/lidr_matched_trees.gpkg"
+out_file <- "C:/Users/digit/Downloads/Examensarbete/Results/ff3d_matched_trees.gpkg"
 
 max_dist <- 2   # maximum allowed distance (m)
 
-# -----------------------------
-# READ DATA
-# -----------------------------
 las <- readLAS(las_file)
+mycsf <- csf(sloop_smooth = FALSE, class_threshold = 0.5, cloth_resolution = 0.5, time_step = 0.65)
+las_csf <- classify_ground(las, mycsf)
+las <- normalize_height(las_csf, knnidw())
+
 ref <- st_read(ref_file)
 
 # ensure reference is projected
@@ -28,7 +29,7 @@ if (st_is_longlat(ref)) {
 las_df <- as.data.frame(las@data)
 
 tree_centroids <- las_df %>%
-  group_by(treeID) %>%
+  group_by(instance_pred) %>%
   summarise(
     x = mean(X),
     y = mean(Y)
@@ -40,14 +41,14 @@ tree_centroids_sf <- st_as_sf(tree_centroids, coords = c("x","y"), crs = st_crs(
 # COMPUTE TREE HEIGHTS
 # -----------------------------
 tree_heights <- las_df %>%
-  group_by(treeID) %>%
+  group_by(instance_pred) %>%
   arrange(desc(Z)) %>%
   slice_head(n = 1) %>%
   summarise(height = mean(Z))
 
 # merge centroid + height
 las_trees <- tree_centroids %>%
-  left_join(tree_heights, by = "treeID")
+  left_join(tree_heights, by = "instance_pred")
 
 las_trees_sf <- st_as_sf(las_trees, coords = c("x","y"), crs = st_crs(ref))
 
@@ -69,7 +70,7 @@ ref$matched_dist <- nearest_dist
 ref$matched_id <- NA
 ref$matched_height <- NA
 
-ref$matched_id[matched] <- las_trees$treeID[nearest_index[matched]]
+ref$matched_id[matched] <- las_trees$instance_pred[nearest_index[matched]]
 
 # -----------------------------
 # COMPUTE HEIGHT RATIO
@@ -84,6 +85,10 @@ st_write(ref, out_file, delete_dsn = TRUE)
 
 print("Matching complete.")
 
+# -----------------------------
+# Caluclate Metrics
+# -----------------------------
+
 #Calculate TP, FN
 matched_refs <- unique(seg_sf$ref_id_nn[seg_sf$matched])
 fn_sf <- ref_sf[!(seq_len(nrow(ref_sf)) %in% matched_refs), ]
@@ -95,9 +100,12 @@ FN <- nrow(fn_sf)
 FN
 
 
+# -----------------------------
+# Plot TP, FN
+# -----------------------------
 
 seg_sf %>%
-  filter(matched == TRUE) %>%                # ta bara omatchade
+  filter(matched == TRUE) %>%                #  ta bara omatchade
   count(ref_id_nn, sort = TRUE) %>%           # räkna förekomster
   head(10)  
 

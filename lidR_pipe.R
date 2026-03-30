@@ -8,14 +8,12 @@ las <- readLAS("C:/Users/digit/Downloads/Examensarbete/Data/las_polygon/240829_A
 col <- height.colors(50)
 print(las)
 las_check(las)
-
-
 #plot(las)
 
 
 #Ground classification
 mycsf <- csf(sloop_smooth = FALSE, class_threshold = 0.5, cloth_resolution = 0.5, time_step = 0.65)
-las_csf <- classify_ground(las1, mycsf)
+las_csf <- classify_ground(las, mycsf)
 #plot(las_csf, color = "Classification", size = 3, bg = "white") 
 #visualise a cross section to evaluate the classification:
 p1 <- c(731300, 7134000)
@@ -28,18 +26,11 @@ ggplot(payload(las_tr), aes(X,Z, color = Classification)) +
   theme_minimal() +
   scale_color_gradientn(colours = height.colors(50))
 
-##Create a digital terrain model
-#dtm_tin <- rasterize_terrain(las_csf, res = 1, algorithm = tin())
-#plot_dtm3d(dtm_tin, bg = "white") 
-
 #Height normalisation
 nlas <- normalize_height(las_csf, knnidw())
-#ändra algoritm
-hist(filter_ground(nlas)$Z, breaks = seq(-0.5, 0.5, 0.01), main = "", xlab = "Elevation")
+#hist(filter_ground(nlas)$Z, breaks = seq(-0.5, 0.5, 0.01), main = "", xlab = "Elevation")
 
-
-
-# Generatelas = # Generate CHM
+# Generate CHM
 chm <- rasterize_canopy(las = nlas, res = 0.5, algorithm = p2r(0.15))
 plot(chm, col = col)
 
@@ -60,7 +51,6 @@ ttops
 plot(ttops, col = "black", add = TRUE, cex = 0.5)
 
 # Segment trees using dalponte
-#las_seg <- segment_trees(las = nlas, algorithm = li2012(dt1=1.4) )
 las_seg <- segment_trees(las = nlas, algorithm = dalponte2016(chm = schm, treetops = ttops) )
 # Count number of trees detected and segmented
 length(unique(las_seg$treeID) |> na.omit())
@@ -81,7 +71,9 @@ las_final <- unnormalize_height(las_seg)
 
 writeLAS(las_final, file= "C:/Users/digit/Downloads/Examensarbete/Results/lidr_segmentation.las" )
 
-
+#Extra:plotting
+flas <- filter_poi(las_final, "treeID" == 2)
+plot(flas, color = "treeID")
 
 
 

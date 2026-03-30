@@ -3,7 +3,7 @@ import laspy
 from scipy.spatial import cKDTree
 
 def stream_transfer_fixed(
-    als_path, tls_path, out_path,
+    als_path, tls_path, out_path, dist_path,
     chunk_size=500_000, k=7, max_dist=0.6,
     semantic_dim="semantic_pred", instance_dim="instance_pred",
     unknown_label=-2, eps=1e-6
@@ -103,14 +103,19 @@ def stream_transfer_fixed(
                 it += 1
                 print(f"Done with iteration {it}")
 
-    print([round(float(d), 3) for d in dist_lst])
+    rounded_data = [round(float(d), 3) for d in dist_lst]
+    with open(dist_path, 'w') as f:
+        for value in rounded_data:
+            f.write(f"{value}\n")
+
     print("Done:", out_path)
 
 if __name__ == "__main__":
     stream_transfer_fixed(
-        als_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/output/731340_7133960fixedname_round1.las",
-        tls_path=r"C:/Users/digit/Downloads/Examensarbete/Results/radarTower001_clipped_2.las",
-        out_path=r"C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_ff3d_prel.las",
+        als_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/remerged_ff3d_segmented_cloud_plus_missing_points.las",
+        tls_path=r"C:/Users/digit/Downloads/Examensarbete/Data/radarTower001_clipped.las",
+        out_path=r"C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_ff3d.las",
+        dist_path = r"C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_ff3d_distances.txt",
         chunk_size=500_000,  # start smaller on Windows
         k=7,
         max_dist=2,

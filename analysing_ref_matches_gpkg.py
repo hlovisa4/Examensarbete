@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-gdf = gpd.read_file("C:/Users/digit/Downloads/Examensarbete/Results/segmentation_evaluation/lidr_matched_trees.gpkg")
+gdf = gpd.read_file("C:/Users/digit/Downloads/Examensarbete/Results/ff3d_matched_trees.gpkg")
 
 gdf = gdf.sort_values(["matched_dist"], ascending= True)
 is_duplicate = gdf.duplicated(subset=["matched_id"], keep="first")
@@ -13,7 +13,7 @@ gdf_matches =gdf[gdf["matched"] == 1]
 print(f"average height match: {np.mean(gdf_matches['matched_height'])}")
 
 
-id_to_species = {1: "Pine", 2: "Spruce", 3: "Beech", 7: "Ädel", 11: "Dead" }
+id_to_species = {1: "Pine", 2: "Spruce", 3: "Birch", 7: "Ädel", 11: "Dead" }
 gdf["Species_name"] = gdf["Species"].map(id_to_species)
 
 species_accuracy = gdf.groupby("Species_name")["matched"].mean() * 100
@@ -40,4 +40,4 @@ height_analysis.columns = ['Total_Trees', 'Matched_Trees', 'Recall_Rate']
 height_analysis['Recall_Rate'] *= 100
 print(height_analysis)
 
-gdf.to_file("C:/Users/digit/Downloads/Examensarbete/Results/segmentation_evaluation/lidr_matched_trees_nodups.gpkg", layer='trees', driver="GPKG")
+gdf.to_file("C:/Users/digit/Downloads/Examensarbete/Results/segmentation_evaluation/ff3d_matched_trees_nodups.gpkg", layer='trees', driver="GPKG")

@@ -4,7 +4,7 @@ Split a LAS/LAZ point cloud into one file per instance, using an extra dimension
 named 'instance_pred'.
 
 Usage:
-  python extract_trees.py input.las --outdir instances_out --skip -1 4294967295 
+ python extract_trees.py input.las --outdir instances_out  --skip -1 4294967295 
 """
 
 from __future__ import annotations
@@ -73,8 +73,7 @@ def split_by_instance(
         suffix = ".laz" if compress else ".las"
         out_path = (
         out_dir
-        / f"{in_path.stem}__instance_{int(iid)}__n{n}{score_str}{suffix}")
-        # Write (optionally compressed if lazrs/laszip backend is available)
+        / f"{in_path.stem}_i_{int(iid)}_n{n}{score_str}{suffix}")
         sub.write(str(out_path))
         written += 1
         print(written)
