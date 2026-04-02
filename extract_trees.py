@@ -2,9 +2,6 @@
 """
 Split a LAS/LAZ point cloud into one file per instance, using an extra dimension
 named 'instance_pred'.
-
-Usage:
- python extract_trees.py input.las --outdir instances_out  --skip -1 4294967295 
 """
 
 from __future__ import annotations
@@ -13,7 +10,8 @@ import argparse
 from pathlib import Path
 import numpy as np
 import laspy
-
+import pandas as pd
+import geopandas as gpd
 
 def split_by_instance(
     in_path: Path,
@@ -21,7 +19,7 @@ def split_by_instance(
     instance_field: str = "treeID",
     skip_values: list[int] | None = None,
     min_points: int = 1,
-    compress: bool = False,
+    id_list: list[int] | None = None,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -43,14 +41,20 @@ def split_by_instance(
 
     # Determine which instance IDs to process
     unique_ids = np.unique(inst)
-
+    
     if skip_values:
         skip_set = set(int(v) for v in skip_values)
         unique_ids = np.array([i for i in unique_ids if int(i) not in skip_set], dtype=unique_ids.dtype)
 
+
+    if id_list is not None:
+        id_set = id_list
+    else:
+        id_set = unique_ids
     # Write one file per instance
     written = 0
-    for iid in unique_ids:
+    for iid in id_set:
+        print(iid)
         mask = inst == iid
         n = int(mask.sum())
         if n < min_points:
@@ -70,7 +74,7 @@ def split_by_instance(
         else:
             score_str = ""
 
-        suffix = ".laz" if compress else ".las"
+        suffix = ".las"
         out_path = (
         out_dir
         / f"{in_path.stem}_i_{int(iid)}_n{n}{score_str}{suffix}")
@@ -81,34 +85,35 @@ def split_by_instance(
     print(f"Done. Wrote {written} instance files to: {out_dir}")
 
 
-def main() -> None:
-    p = argparse.ArgumentParser(description="Split LAS/LAZ by instance_pred into separate files.")
-    p.add_argument("input", type=Path, help="Input .las or .laz")
-    p.add_argument("--outdir", type=Path, default=Path("instances_out"), help="Output directory")
-    p.add_argument("--field", type=str, default="instance_pred", help="Instance field name (default: instance_pred)")
-    p.add_argument(
-        "--skip",
-        type=int,
-        nargs="*",
-        default=[],
-        help="Instance IDs to skip (e.g. -1 4294967295)",
-    )
-    p.add_argument("--min-points", type=int, default=1, help="Skip instances with fewer than this many points")
-    p.add_argument(
-        "--compress",
-        action="store_true",
-        help="Write LAZ instead of LAS (requires a compression backend, e.g. lazrs)",
-    )
-    args = p.parse_args()
+def main():
+    source = "lidr" # or "FF3D"
 
-    split_by_instance(
-        in_path=args.input,
-        out_dir=args.outdir,
-        instance_field=args.field,
-        skip_values=args.skip,
-        min_points=args.min_points,
-        compress=args.compress,
-    )
+
+
+
+    if source == "lidr":
+        match_list = gpd.read_file("C:/Users/digit/Downloads/Examensarbete/Results/ff3d_matched_trees_new.gpkg")
+        unique_ids = match_list["chm_id"].unique()
+        rng = np.random.default_rng(seed=42)
+        filtered_ids = unique_ids[unique_ids != 0]
+        sampled_ids = rng.choice(filtered_ids, size=100, replace=False)
+
+        split_by_instance(
+            in_path="C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_lidr_2.las",
+            out_dir="C:/Users/digit/Downloads/Examensarbete/Results/extracted_trees_lidr_2",
+            instance_field="treeID",
+            skip_values=[],
+            min_points=30,
+            id_list = sampled_ids.tolist(),
+        )
+    else:
+        split_by_instance(
+            in_path=None,
+            out_dir=None,
+            instance_field="instance_pred",
+            skip_values=[],
+            min_points=30,
+        )
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 plt.switch_backend("Agg")  # headless
 
 input_folder = "C:/Users/digit/Downloads/Examensarbete/ff3d_tls_als_trees"
-output_folder = "C:/Users/digit/Downloads/Examensarbete/Results/TLS_ALS_v_ff3d_visualization_100_random"
+output_folder = "C:/Users/digit/Downloads/Examensarbete/Results/TLS_ALSff3d_visualization_100_random"
 os.makedirs(output_folder, exist_ok=True)
 
 def las_to_np(file_path):
@@ -19,6 +19,7 @@ las_files = [f for f in os.listdir(input_folder) if f.lower().endswith(".las")]
 random.seed(42) 
 for filename in random.sample(las_files, min(n_samples, len(las_files))):
     pts = las_to_np(os.path.join(input_folder, filename))
+    print(pts[2])
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
 
     # XZ projection (X vs Z, colored by Y)

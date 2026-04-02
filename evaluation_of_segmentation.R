@@ -5,18 +5,23 @@ library(dplyr)
 # -----------------------------
 # Read Files
 # -----------------------------
-las_file <- "C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/remerged_ff3d_segmented_cloud_plus_missing_points.las"
+las_file_ff3d <- "C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/remerged_ff3d_segmented_cloud_plus_missing_points.las"
+las_file_lidr <-  "C:/Users/digit/Downloads/Examensarbete/Results/ALS_lidr_segmentation.las"
 ref_file <- "C:/Users/digit/Downloads/Examensarbete/Data/TreesTowerFoot240829.gpkg"
 out_file <- "C:/Users/digit/Downloads/Examensarbete/Results/ff3d_matched_trees.gpkg"
 
 max_dist <- 2   # maximum allowed distance (m)
 
-las <- readLAS(las_file)
+lasFF3D <- readLAS(las_file_ff3d)
+lasCHM <- readLAS(las_file_lidr)
 mycsf <- csf(sloop_smooth = FALSE, class_threshold = 0.5, cloth_resolution = 0.5, time_step = 0.65)
-las_csf <- classify_ground(las, mycsf)
-las <- normalize_height(las_csf, knnidw())
+lasFF3D_csf <- classify_ground(lasFF3D, mycsf)
+lasFF3D <- normalize_height(lasFF3D_csf, knnidw())
+lasCHM_csf <- classify_ground(lasCHM, mycsf)
+lasCHM <- normalize_height(lasCHM_csf, knnidw())
 
 ref <- st_read(ref_file)
+ref <- ref[!duplicated(ref$GlobalID), ]
 
 # ensure reference is projected
 if (st_is_longlat(ref)) {
@@ -26,7 +31,8 @@ if (st_is_longlat(ref)) {
 # -----------------------------
 # COMPUTE LAS TREE CENTROIDS
 # -----------------------------
-las_df <- as.data.frame(las@data)
+lasFF3D_df <- as.data.frame(lasFF3D@data)
+lasCHM_df <- as.data.frame(lasCHM@data)
 
 tree_centroids <- las_df %>%
   group_by(instance_pred) %>%
@@ -36,6 +42,7 @@ tree_centroids <- las_df %>%
   )
 
 tree_centroids_sf <- st_as_sf(tree_centroids, coords = c("x","y"), crs = st_crs(ref))
+
 
 # -----------------------------
 # COMPUTE TREE HEIGHTS
