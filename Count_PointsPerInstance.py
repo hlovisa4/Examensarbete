@@ -30,9 +30,6 @@ with laspy.open(tls_path) as f:
 # Convert to sorted list for nicer printing
 unique_instances = sorted(unique_instances)
 
-print(f"Number of unique instance_pred IDs: {len(unique_instances)}")
-print("Instance IDs:")
-print(unique_instances)
 
 print("\nPoints per instance:")
 for inst_id in unique_instances:
