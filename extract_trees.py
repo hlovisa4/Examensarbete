@@ -3,10 +3,6 @@
 Split a LAS/LAZ point cloud into one file per instance, using an extra dimension
 named 'instance_pred'.
 """
-
-from __future__ import annotations
-
-import argparse
 from pathlib import Path
 import numpy as np
 import laspy
@@ -87,26 +83,23 @@ def split_by_instance(
 
 def main():
     source = "lidr" # or "FF3D"
-
-
-
-
     if source == "lidr":
         match_list = gpd.read_file("C:/Users/digit/Downloads/Examensarbete/Results/ff3d_matched_trees_new.gpkg")
         unique_ids = match_list["chm_id"].unique()
         rng = np.random.default_rng(seed=42)
         filtered_ids = unique_ids[unique_ids != 0]
         sampled_ids = rng.choice(filtered_ids, size=100, replace=False)
-
+        print("starting split_by_instance with", len(sampled_ids), "IDs")
         split_by_instance(
-            in_path="C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_lidr_2.las",
-            out_dir="C:/Users/digit/Downloads/Examensarbete/Results/extracted_trees_lidr_2",
+            in_path=Path("C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_lidr_2.las"),
+            out_dir=Path("C:/Users/digit/Downloads/Examensarbete/Results/extracted_trees_lidr_2"),
             instance_field="treeID",
             skip_values=[],
             min_points=30,
             id_list = sampled_ids.tolist(),
         )
     else:
+        print("nej")
         split_by_instance(
             in_path=None,
             out_dir=None,
@@ -115,6 +108,4 @@ def main():
             min_points=30,
         )
 
-
-if __name__ == "__main__":
-    main()
+main()
