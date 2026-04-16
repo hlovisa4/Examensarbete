@@ -25,7 +25,9 @@ sap_gdf = gpd.GeoDataFrame(
 nearest = gpd.sjoin_nearest(sap_gdf, ref_gdf, how="left", distance_col="dist")
 id_mapping = {str(k): v for k, v in dict(zip(nearest["metadata_id"], nearest["ff3d_id"])).items()}
 print(id_mapping)
-
+id_mapping["403"] = 1076
+id_mapping["408"] = 1092
+id_mapping["360"] = 1132
 
 
 
