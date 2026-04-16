@@ -5,10 +5,10 @@ library(dplyr)
 # -----------------------------
 # Read Files
 # -----------------------------
-las_file_ff3d <- "C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/remerged_ff3d_segmented_cloud_plus_missing_points.las"
-las_file_lidr <-  "C:/Users/digit/Downloads/Examensarbete/Results/ALS_lidr_segmentation.las"
+las_file_ff3d <- "C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/tls_als_ff3d_2.las"
+las_file_lidr <-  "C:/Users/digit/Downloads/Examensarbete/Results/tls_als_lidr_2.las"
 ref_file <- "C:/Users/digit/Downloads/Examensarbete/Data/TreesTowerFoot240829.gpkg"
-out_file <- "C:/Users/digit/Downloads/Examensarbete/Results/ff3d_matched_trees_new.gpkg"
+out_file <- "C:/Users/digit/Downloads/Examensarbete/Results/matched_trees_als_tls.gpkg"
 
 max_dist <- 2   # maximum allowed distance (m)
 

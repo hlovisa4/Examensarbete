@@ -1,12 +1,13 @@
 import numpy as np
 import laspy
 from scipy.spatial import cKDTree
+from tqdm import tqdm
 
 def stream_transfer_fixed(
     als_path, tls_path, out_path, dist_path,
     chunk_size=500_000, k=7, max_dist=0.6,
     semantic_dim="semantic_pred", instance_dim="instance_pred",
-    unknown_label=-2, eps=1e-6, sem = False
+    unknown_label=-2, eps=1e-6, sem = False, max_dist_strict = 0.5
 ):
     als = laspy.read(als_path)
     dist_lst = []
@@ -16,10 +17,6 @@ def stream_transfer_fixed(
         np.asarray(als.y, np.float64),
         np.asarray(als.z, np.float64),
     ))
-    def extent_str(xyz):
-        mn = xyz.min(axis=0)
-        mx = xyz.max(axis=0)
-        return f"min={mn}, max={mx}, span={mx-mn}"
 
 
     tree = cKDTree(als_xyz)
@@ -29,8 +26,7 @@ def stream_transfer_fixed(
         print(f"ALS missing '{semantic_dim}'")
     if instance_dim not in als.point_format.dimension_names:
         raise ValueError(f"ALS missing '{instance_dim}'")
-    if sem:
-        als_sem = np.asarray(getattr(als, semantic_dim))
+    als_sem = np.asarray(getattr(als, semantic_dim)) if sem else None
     als_ins = np.asarray(getattr(als, instance_dim))
 
     #Get centroids of ALS instances
@@ -53,20 +49,16 @@ def stream_transfer_fixed(
 
     with laspy.open(tls_path) as f:
         header = f.header.copy()
-
-        # 🔹 Add extra dims if they don't exist
         if sem:
             header.add_extra_dim(laspy.ExtraBytesParams(
             name=semantic_dim, type=np.int32
                 ))
-
         header.add_extra_dim(laspy.ExtraBytesParams(
                 name=instance_dim, type=np.float64
             ))
         
         with laspy.open(out_path, mode="w", header=header) as writer:
-            it = 0
-            for points in f.chunk_iterator(chunk_size):
+            for points in tqdm(f.chunk_iterator(chunk_size), desc="Processing chunks"):
                 pts = np.column_stack((
                     np.asarray(points.x, np.float64),
                     np.asarray(points.y, np.float64),
@@ -77,18 +69,16 @@ def stream_transfer_fixed(
                 #ok = dists[:, 0] <= max_dist
 
                 w = 1.0 / np.maximum(dists, eps)
-                if sem:
-                    sem_neighbors = als_sem[idx] ## lista med alla nn's seg labels 
+                sem_neighbors = als_sem[idx] if sem else None ## lista med alla nn's seg labels 
                 ins_neighbors = als_ins[idx]
                 nearest_labels = ins_neighbors[:, 0]
-                bad_mask = (nearest_labels == 0) | (nearest_labels == -1)
-                max_dist_strict = 0.5
+                bad_mask = (nearest_labels == 0)    # | (nearest_labels == -1)
                 thresholds = np.where(bad_mask, max_dist_strict, max_dist)
                 ok = dists[:, 0] <= thresholds
 
                 if sem:
                     sem_pred = np.empty(len(points), dtype=np.int32)
-                ins_pred = np.empty(len(points), dtype=np.int32)
+                ins_pred = np.empty(len(points), dtype=np.int64)
 
                 for i in range(len(points)):
                     # semantic weighted mode
@@ -108,9 +98,14 @@ def stream_transfer_fixed(
                     sem_pred[~ok] = unknown_label
                 failed_pts_xy = pts[~ok, :2]
                 if len(failed_pts_xy) > 0:
-                    _, centroid_idx = centroid_tree.query(failed_pts_xy, k=1)
-                    ins_pred[~ok] = centroid_ids[centroid_idx]
-                ins_pred[~ok] = unknown_label
+                    d, centroid_idx = centroid_tree.query(failed_pts_xy, k=1)
+                    valid = d < max_dist
+                    ins_pred[~ok][valid] = centroid_ids[centroid_idx[valid]]
+                    ins_pred[~ok][~valid] = unknown_label
+                    #ins_pred[~ok] = centroid_ids[centroid_idx]
+                else:
+                    print("No failed points in this chunk.")
+                    ins_pred[~ok] = unknown_label
                 out_points = laspy.ScaleAwarePointRecord.zeros(len(points), header = header)
 
                 # copy all “standard” dims that exist in the input point format
@@ -123,17 +118,7 @@ def stream_transfer_fixed(
                 if sem:
                     out_points[semantic_dim] = sem_pred
                 out_points[instance_dim] = ins_pred 
-
                 writer.write_points(out_points)
-
-                #print(sem_pred[0:10])
-                #print(np.min(points.x), np.max(points.x))
-                #setattr(points, semantic_dim, sem_pred)
-                #setattr(points, instance_dim, ins_pred)
-                #print(np.unique(points.semantic_pred))
-               #writer.write_points(points) #Det är här det blir tokigt 
-                it += 1
-                print(f"Done with iteration {it}")
 
     rounded_data = [round(float(d), 3) for d in dist_lst]
     with open(dist_path, 'w') as f:
@@ -146,12 +131,14 @@ if __name__ == "__main__":
     mode = input("Enter mode (ff3d/lidr): ").strip().lower()
     if  mode == "ff3d":
         stream_transfer_fixed(
-            als_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/remerged_ff3d_segmented_cloud_plus_missing_points.las",
+            als_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/remerged_ff3d_segmented_cloud_plus_missing_points_clipped.las",
             tls_path=r"C:/Users/digit/Downloads/Examensarbete/Data/radarTower001_clipped.las",
-        dist_path = r"C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_ff3d_distances.txt",
-            chunk_size=500_000,  # start smaller on Windows
+            out_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/TLS_labeled_from_ALS_ff3d_2.las",
+            dist_path = r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/TLS_labeled_from_ALS_ff3d_distances2.txt",
+            chunk_size=1_000_000,  # start smaller on Windows
             k=7,
             max_dist=2,
+            sem = True
         )
     elif mode == "lidr":
         stream_transfer_fixed(

@@ -6,8 +6,8 @@ named 'instance_pred'.
 from pathlib import Path
 import numpy as np
 import laspy
-import pandas as pd
 import geopandas as gpd
+from tqdm import tqdm
 
 def split_by_instance(
     in_path: Path,
@@ -48,8 +48,7 @@ def split_by_instance(
     else:
         id_set = unique_ids
     # Write one file per instance
-    written = 0
-    for iid in id_set:
+    for iid in tqdm(id_set, desc="Processing instances"):
         print(iid)
         mask = inst == iid
         n = int(mask.sum())
@@ -75,15 +74,13 @@ def split_by_instance(
         out_dir
         / f"{in_path.stem}_i_{int(iid)}_n{n}{score_str}{suffix}")
         sub.write(str(out_path))
-        written += 1
-        print(written)
 
-    print(f"Done. Wrote {written} instance files to: {out_dir}")
 
 
 def main():
-    source = "lidr" # or "FF3D"
+    source = "ff3d" # or "FF3D"
     if source == "lidr":
+        print("Starting split_by_instance for lidR data")
         match_list = gpd.read_file("C:/Users/digit/Downloads/Examensarbete/Results/ff3d_matched_trees_new.gpkg")
         unique_ids = match_list["chm_id"].unique()
         rng = np.random.default_rng(seed=42)
@@ -99,10 +96,10 @@ def main():
             id_list = sampled_ids.tolist(),
         )
     else:
-        print("nej")
+        print("Starting split_by_instance for ff3d data")
         split_by_instance(
-            in_path=None,
-            out_dir=None,
+           in_path=Path("C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/TLS_labeled_from_ALS_ff3d_2.las"),
+            out_dir=Path("C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/extracted_trees_ff3d_2"),
             instance_field="instance_pred",
             skip_values=[],
             min_points=30,
