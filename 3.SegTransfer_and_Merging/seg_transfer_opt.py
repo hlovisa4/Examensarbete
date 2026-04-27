@@ -158,10 +158,10 @@ if __name__ == "__main__":
     mode = input("Enter mode (ff3d/lidr): ").strip().lower()
     if mode == "ff3d":
         stream_transfer_fixed(
-            als_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/remerged_ff3d_segmented_cloud_plus_missing_points_clipped.las",
-            tls_path=r"C:/Users/digit/Downloads/Examensarbete/Data/radarTower001_clipped.las",
-            out_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/TLS_labeled_from_ALS_ff3d_2.las",
-            dist_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/TLS_labeled_from_ALS_ff3d_distances2.txt",
+            als_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/tile_ALS_clipped_to_reflist.las",
+            tls_path=r"C:/Users/digit/Downloads/Examensarbete/Data/TLS_clipped_to_reflist.las",
+            out_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/TLS_labeled_from_ALS_ff3d.las",
+            dist_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/TLS_labeled_from_ALS_ff3d_distances.txt",
             chunk_size=1_000_000,
             k=7,
             max_dist=2,

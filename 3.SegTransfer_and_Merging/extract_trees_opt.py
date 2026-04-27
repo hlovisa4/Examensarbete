@@ -88,10 +88,10 @@ def main():
     else:
         print("Starting split_by_instance for ff3d data")
         split_by_instance(
-           in_path=Path("C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/tls_als_ff3d_2.las"),
-            out_dir=Path("C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/extracted_trees_ff3d_2"),
+           in_path=Path("C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/tls_als_ff3d_final.las"),
+            out_dir=Path("C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/ALS_TLS_extracted_trees_ff3d"),
             instance_field="instance_pred",
-            skip_values=[-2, 0],
+            skip_values=[],
             min_points=30,
         )
 

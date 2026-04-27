@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 #Requires biomass_venv!!
 
-VOXEL_SIZE = 0.2  # meters
+VOXEL_SIZES = [0.5, 0.2, 0.1, 0.05]
 COVERAGE_THRESHOLD = 0.6
 
 HEIGHT_BINS = [
@@ -64,7 +64,7 @@ def aggregate_height_bins(biomass_voxels, voxel_size):
 # --------------------------------------------------
 # MAIN PIPELINE
 # --------------------------------------------------
-def process_tree(stem_path, canopy_path, csv_path, id):
+def process_tree(stem_path, canopy_path, csv_path, id, voxel_size):
     # Load data
     if not os.path.exists(stem_path) or not os.path.exists(canopy_path):
         print(f"Missing point cloud for {id}: stem={os.path.exists(stem_path)}, canopy={os.path.exists(canopy_path)}")
@@ -75,8 +75,8 @@ def process_tree(stem_path, canopy_path, csv_path, id):
 
     biomass_stem = df["Biomass_stem"].values[0]
     biomass_foliage = df["Biomass_branch"].values[0]
-    dbh = df["DBH_cm"].values[0]
-    pc_count = df["Point Count"].values[0]
+    #dbh = df["DBH_cm_hlayer_0.5"].values[0]
+    #pc_count = df["Point Count"].values[0]
 
     # Heights
     stem_top = np.max(stem[:, 2]) if len(stem) else 0
@@ -93,13 +93,14 @@ def process_tree(stem_path, canopy_path, csv_path, id):
 
     if coverage_total < COVERAGE_THRESHOLD:
         print("Coverage below threshold → skipping voxel distribution")
-        total_bins = np.zeros(len(HEIGHT_BINS))
+        stem_bins = np.zeros(len(HEIGHT_BINS))
+        foliage_bins = np.zeros(len(HEIGHT_BINS))
     else:
         # -----------------------------
         # VOXELIZE
         # -----------------------------
-        stem_voxels = voxelize(stem, VOXEL_SIZE)
-        foliage_voxels = voxelize(foliage, VOXEL_SIZE)
+        stem_voxels = voxelize(stem, voxel_size)
+        foliage_voxels = voxelize(foliage, voxel_size)
 
         # -----------------------------
         # DISTRIBUTE BIOMASS
@@ -110,10 +111,10 @@ def process_tree(stem_path, canopy_path, csv_path, id):
         # -----------------------------
         # AGGREGATE HEIGHT BINS
         # -----------------------------
-        stem_bins = aggregate_height_bins(stem_biomass_vox, VOXEL_SIZE)
-        foliage_bins = aggregate_height_bins(foliage_biomass_vox, VOXEL_SIZE)
+        stem_bins = aggregate_height_bins(stem_biomass_vox, voxel_size)
+        foliage_bins = aggregate_height_bins(foliage_biomass_vox, voxel_size)
 
-        total_bins = stem_bins + foliage_bins
+    total_bins = stem_bins + foliage_bins
 
 
     # -----------------------------
@@ -121,10 +122,7 @@ def process_tree(stem_path, canopy_path, csv_path, id):
     # -----------------------------
     output = pd.DataFrame([{
         "id": id[4:],
-        "dbh (cm)": dbh,
-        "height": foliage_top,
-        "biomass_stem": biomass_stem,
-        "biomass_foliage": biomass_foliage,
+        "voxel_size": voxel_size,
         "0-1.3m Total": total_bins[0],
         "1.3-8m Total": total_bins[1],
         "8-14m Total": total_bins[2],
@@ -136,29 +134,29 @@ def process_tree(stem_path, canopy_path, csv_path, id):
         "0-1.3m Foliage": foliage_bins[0],
         "1.3-8m Foliage": foliage_bins[1],
         "8-14m Foliage": foliage_bins[2],
-        "14+m Foliage": foliage_bins[3],
-        "coverage_norm": coverage_total,
-        "coverage_top": coverage_top,
-        "Point count": pc_count
+        "14+m Foliage": foliage_bins[3]
         
     }])
+    df["TreeID"] = pd.to_numeric(df["TreeID"], errors="coerce")
+    output["id"] = pd.to_numeric(output["id"], errors="coerce")
 
-    return output
+    return df.merge(output, left_on="TreeID", right_on="id", how="left")
 
 
 if __name__ == "__main__":
-    input_path = r"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/yrt_new/"
+    input_path = r"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/yrt_final/"
     tree_list = [file.strip("_").split("_")[0] for file in os.listdir(input_path) if file.endswith("_results.csv")]
     biomass_data = pd.DataFrame()
-    for id in ["tree1011", "tree1121", "tree1314", "tree1440", "tree879"]: #tqdm(tree_list):
-        print(f"Processing tree {id}...")
-        biomass_dist = process_tree(
-            stem_path=f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/yrt_new/pointclouds/stem/{id}_stempoints.ply",
-            canopy_path=f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/yrt_new/pointclouds/canopy/{id}_canopypoints.ply",
-            csv_path=f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/yrt_new/{id}_results.csv",
-            id = id
-        )
-        biomass_data = pd.concat([biomass_data, biomass_dist], ignore_index=True)
-        #print(biomass_data)
-    biomass_data.to_csv("/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/yrt_new/biomass_height_distribution_summary_bugfix.csv", index=False)
+    for voxel_size in VOXEL_SIZES:
+        for id in tqdm(tree_list):
+            print(f"Processing tree {id}...")
+            biomass_dist = process_tree(
+                stem_path=f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/yrt_final/pointclouds/stem/{id}_stempoints.ply",
+                canopy_path=f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/yrt_final/pointclouds/canopy/{id}_canopypoints.ply",
+                csv_path=f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/yrt_final/{id}_results.csv",
+                id = id,
+                voxel_size = voxel_size
+            )
+            biomass_data = pd.concat([biomass_data, biomass_dist], ignore_index=True)
+    biomass_data.to_csv("/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/biomass_height_distribution_summary.csv", index=False)
     print("Done!")
