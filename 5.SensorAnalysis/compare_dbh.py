@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 reflist = gpd.read_file("/mnt/c/Users/digit/Downloads/Examensarbete/Results/matched_trees.gpkg")
 
-biomass = pd.read_csv("/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/biomass_height_distribution_summary.csv")
+biomass = pd.read_csv("/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/biomass_height_distribution_summary_dbhtrial.csv")
 print("reflist duplicates:", reflist["ff3d_tile_id"].duplicated().sum())
 print("biomass duplicates:", biomass["TreeID"].duplicated().sum())
 biomass = biomass.groupby("TreeID").mean(numeric_only=True).reset_index()
