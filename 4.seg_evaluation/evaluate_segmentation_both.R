@@ -173,13 +173,13 @@ ggplot(analysis_long, aes(x = neighbor_bin, y = success_rate, color = method, gr
   ) +
   theme_minimal()
 
-ggplot(ref, aes(x = angle_rad, y = ff3d_tile_matched)) +
+fig <- ggplot(ref, aes(x = angle_rad, y = ff3d_tile_matched)) +
   labs ( x = "Elevation angle (rad)", y = "Detection success") +
   geom_jitter(height = 0.02, alpha = 0.3) +
   geom_smooth(method = "glm", method.args = list(family = "binomial")) +
   theme_minimal()
 
-
+ggsave("C:/Users/digit/Downloads/Examensarbete/Examensarbete/4.seg_evaluation/Resultat/Detection_analysis.png", fig, width = 10.5, height = 8.0, dpi = 400, bg = "white") 
 ref_clean <- ref %>%
   filter(
     !is.na(ff3d_tile_matched),
@@ -193,13 +193,4 @@ ref_clean$H_TLS  <- as.numeric(ref_clean$H_TLS)
 #Interaction Model
 model_all <- glm(ff3d_tile_matched ~ H_TLS + DBH_Field + n_neighbors_5m + angle_rad , 
                   data = ref_clean, family = binomial)
-model_base <- glm(ff3d_tile_matched ~ H_TLS +DBH_Field + Species, 
-                 data = ref_clean, family = binomial)
-anova(model_base, model_all, test = "Chisq")
 summary(model_all)
-
-
-library(corrplot)
-
-corrplot(cor_matrix, method = "color", type = "upper",
-         tl.cex = 0.7, number.cex = 0.6)

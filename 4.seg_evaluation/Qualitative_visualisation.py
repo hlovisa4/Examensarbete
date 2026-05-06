@@ -8,12 +8,12 @@ import pandas as pd
 
 plt.switch_backend("Agg")  # headless
 
-input_folder = "C:/Users/digit/Downloads/Examensarbete/Results/chm_segmentation/ALS_TLS_extracted_trees_lidr"
-output_folder = "C:/Users/digit/Downloads/Examensarbete/Results/Qual_eval/TLS_ALS_CHM/"
+input_folder = "C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/ALS_TLS_extracted_trees_ff3d"
+output_folder = "C:/Users/digit/Downloads/Examensarbete/Results/Qual_eval/TLS_ALS_FF3D/"
 os.makedirs(output_folder, exist_ok=True)
 
 ref = pd.read_csv("C:/Users/digit/Downloads/Examensarbete/Results/Qual_eval/random_100_all_matched.csv")
-ids = set(ref["chm_id"].astype(str)) 
+ids = set(ref["ff3d_tile_id"].astype(str)) 
 ids = {str(int(float(x))) for x in ids}
 print(ids)
 all_files = os.listdir(input_folder)
