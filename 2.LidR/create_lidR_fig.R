@@ -19,6 +19,20 @@ panel_theme <- theme(
   plot.title = element_text(face = "bold", hjust = 0.5),
   plot.margin = margin(t = 10, r = 10, b = 10, l = 10)
 )
+las <- readLAS("C:/Users/digit/Downloads/Examensarbete/Data/ALS_clipped_to_reflist.las",  filter = "-set_withheld_flag 0 -drop_z_above 297")
+mycsf <- csf(sloop_smooth = FALSE, class_threshold = 0.5, cloth_resolution = 0.5, time_step = 0.65)
+las_csf <- classify_ground(las, mycsf)
+nlas <- normalize_height(las_csf, knnidw())
+chm <- rasterize_canopy(las = nlas, res = 0.5, algorithm = p2r(0.15))
+kernel <- matrix(1, 3, 3)
+schm <- terra::focal(x = chm, w = kernel, fun = mean, na.rm = TRUE)
+f <- function(x) {y <- 2.6 * (-(exp(-0.08*(x-2))-1)) + 1.5
+y[x < 2] <- 1.5
+y[x > 20] <- 5
+return(y)}
+
+ttops <- locate_trees(las = schm, algorithm = lmf(f))
+las_seg <- segment_trees(las = nlas, algorithm = dalponte2016(chm = schm, treetops = ttops) )
 
 # ----------------------------
 # 1) Panel A: ground classification cross-section
@@ -98,18 +112,21 @@ las_zoom <- clip_circle(las_seg, x = 731300, y = 7134050, radius = 24)
 # ---- 4.2 Render high-resolution rgl snapshot ----
 rgl_file <- "C:/Users/digit/Downloads/Examensarbete/Results/panelD_rgl.png"
 
-#plot(las_zoom, color = id_name, size = 3, bg = "white", )
-#par3d(windowRect = c(50, 50, 3500, 3500))
-#rgl.snapshot(rgl_file)
+plot(las_zoom, color = id_name, size = 3, bg = "white", )
+par3d(windowRect = c(50, 50, 3500, 3500))
+rgl.snapshot(rgl_file)
 
-#close3d()
+close3d()
 
 # ---- 4.3 Read the image and convert to a ggplot panel ----
 img <- readPNG(rgl_file)
 
 pD <- ggplot() +
-  annotation_raster(img, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf) +
-  coord_equal() +
+  annotation_custom(
+    rasterGrob(img, interpolate = TRUE),
+    xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf
+  ) +
+  coord_fixed() +
   labs(title = "D) Tree instance segmentation (point cloud view)") +
   theme_void() +
   panel_theme

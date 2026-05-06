@@ -1,37 +1,43 @@
 import os
 import random
+import re
 import laspy
 import numpy as np
 import matplotlib.pyplot as plt
-import geopandas as gpd
+import pandas as pd
 
 plt.switch_backend("Agg")  # headless
 
-input_folder = "C:/Users/digit/Downloads/Examensarbete/ff3d_segmentation/tls_als_trees"
-output_folder = "C:/Users/digit/Downloads/Examensarbete/Results/TLS_ALSff3d_visualization_100_random"
+input_folder = "C:/Users/digit/Downloads/Examensarbete/Results/chm_segmentation/ALS_TLS_extracted_trees_lidr"
+output_folder = "C:/Users/digit/Downloads/Examensarbete/Results/Qual_eval/TLS_ALS_CHM/"
 os.makedirs(output_folder, exist_ok=True)
-gdf = gpd.read_file("C:/Users/digit/Downloads/Examensarbete/Results/matched_trees.gpkg")
-filtered_gdf = gdf[gdf['ff3d_id'].notna() & gdf['chm_id'].notna()]
-random_sample = filtered_gdf.sample(n=100, random_state=42)
-sample_ids = set(random_sample['ff3d_id'].astype(str))
+
+ref = pd.read_csv("C:/Users/digit/Downloads/Examensarbete/Results/Qual_eval/random_100_all_matched.csv")
+ids = set(ref["chm_id"].astype(str)) 
+ids = {str(int(float(x))) for x in ids}
+print(ids)
+all_files = os.listdir(input_folder)
+
+file_list = []
+
+pattern = re.compile(r"_i_(\d+)_")
+
+for f in all_files:
+    match = pattern.search(f)
+    if match:
+        file_id = match.group(1)
+        if file_id in ids:
+            file_list.append(f)
+
+print(len(file_list))
 
 def las_to_np(file_path):
     las = laspy.read(file_path)
     return np.vstack((las.x, las.y, las.z)).T
 
-las_files = [f for f in os.listdir(input_folder) if f.lower().endswith(".las")]
-matched_files = [
-    f for f in las_files 
-    if any(f"i_{id_val}" in f for id_val in sample_ids)
-]
 
-print(f"Found {len(matched_files)} matching .las files.")
-
-
-random.seed(42) 
-for filename in matched_files:
+for filename in file_list:
     pts = las_to_np(os.path.join(input_folder, filename))
-    print(pts[2])
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
 
     # XZ projection (X vs Z, colored by Y)
@@ -49,3 +55,4 @@ for filename in matched_files:
     png_path = os.path.join(output_folder, f"{os.path.splitext(filename)[0]}.png")
     fig.savefig(png_path, dpi=300, bbox_inches="tight", pad_inches=0)
     plt.close(fig)
+    print(f"Saved visualization for {filename} to {png_path}")

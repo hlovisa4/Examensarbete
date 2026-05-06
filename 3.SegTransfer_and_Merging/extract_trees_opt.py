@@ -68,22 +68,14 @@ def split_by_instance(
 
 
 def main():
-    source = "ff3d" # or "FF3D"
+    source = "lidr" # or "FF3D"
     if source == "lidr":
-        print("Starting split_by_instance for lidR data")
-        match_list = gpd.read_file("C:/Users/digit/Downloads/Examensarbete/Results/ff3d_matched_trees_new.gpkg")
-        unique_ids = match_list["chm_id"].unique()
-        rng = np.random.default_rng(seed=42)
-        filtered_ids = unique_ids[unique_ids != 0]
-        sampled_ids = rng.choice(filtered_ids, size=100, replace=False)
-        print("starting split_by_instance with", len(sampled_ids), "IDs")
         split_by_instance(
-            in_path=Path("C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_lidr_2.las"),
-            out_dir=Path("C:/Users/digit/Downloads/Examensarbete/Results/extracted_trees_lidr_2"),
+            in_path=Path("C:/Users/digit/Downloads/Examensarbete/Results/chm_segmentation/tls_als_lidr_final.las"),
+            out_dir=Path("C:/Users/digit/Downloads/Examensarbete/Results/chm_segmentation/ALS_TLS_extracted_trees_lidr"),
             instance_field="treeID",
             skip_values=[],
             min_points=30,
-            id_list = sampled_ids.tolist(),
         )
     else:
         print("Starting split_by_instance for ff3d data")

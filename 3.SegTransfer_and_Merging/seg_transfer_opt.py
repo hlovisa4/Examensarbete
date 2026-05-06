@@ -34,7 +34,7 @@ def weighted_mode_vectorized(neighbors: np.ndarray, weights: np.ndarray) -> np.n
 
 def stream_transfer_fixed(
     als_path, tls_path, out_path, dist_path,
-    chunk_size=500_000, k=7, max_dist=0.6,
+    chunk_size=500_000, k=7, max_dist=1.7,
     semantic_dim="semantic_pred", instance_dim="instance_pred",
     unknown_label=-2, eps=1e-6, sem=False, max_dist_strict=0.5
 ):
@@ -126,7 +126,7 @@ def stream_transfer_fixed(
                 failed_xy = pts[~ok, :2]
                 if len(failed_xy) > 0:
                     d_c, c_idx = centroid_tree.query(failed_xy, k=1)
-                    close = d_c < 3
+                    close = d_c < 3.5
 
                     # Build a writable index into ~ok rows
                     fail_indices = np.where(~ok)[0]
@@ -164,17 +164,17 @@ if __name__ == "__main__":
             dist_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/TLS_labeled_from_ALS_ff3d_distances.txt",
             chunk_size=1_000_000,
             k=7,
-            max_dist=2,
+            max_dist=0.85,
             sem=True,
         )
     elif mode == "lidr":
         stream_transfer_fixed(
-            als_path=r"C:/Users/digit/Downloads/Examensarbete/Results/ALS_lidr_segmentation.las",
-            tls_path=r"C:/Users/digit/Downloads/Examensarbete/Data/radarTower001_clipped.las",
-            out_path=r"C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_lidr_2.las",
-            dist_path=r"C:/Users/digit/Downloads/Examensarbete/Results/TLS_labeled_from_ALS_lidr_distances.txt",
-            chunk_size=500_000,
+            als_path=r"C:/Users/digit/Downloads/Examensarbete/Results/chm_segmentation/chm_ALS_clipped_to_reflist.las",
+            tls_path=r"C:/Users/digit/Downloads/Examensarbete/Data/TLS_clipped_to_reflist.las",
+            out_path=r"C:/Users/digit/Downloads/Examensarbete/Results/chm_segmentation/TLS_labeled_from_ALS_lidr.las",
+            dist_path=r"C:/Users/digit/Downloads/Examensarbete/Results/chm_segmentation/TLS_labeled_from_ALS_lidr_distances.txt",
+            chunk_size=1_000_000,
             k=7,
-            max_dist=2,
+            max_dist=0.85,
             instance_dim="treeID",
         )

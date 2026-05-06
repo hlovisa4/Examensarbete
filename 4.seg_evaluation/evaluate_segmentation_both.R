@@ -1,6 +1,7 @@
 library(lidR)
 library(sf)
 library(dplyr)
+library(nngeo)
 
 # -----------------------------
 # Read Files
@@ -12,13 +13,27 @@ las_file_lidr <- "C:/Users/digit/Downloads/Examensarbete/Results/chm_segmentatio
 ref_file <- "C:/Users/digit/Downloads/Examensarbete/Data/TreesTowerFoot240829.gpkg" 
 out_file <- "C:/Users/digit/Downloads/Examensarbete/Results/matched_trees.gpkg"
 
-max_dist <- 2   # maximum allowed distance (m)
+max_dist <-1.8   # maximum allowed distance (m)
+
+#Fix Desnsityu metric
+ref <- st_read(ref_file)
+ref <- ref[!duplicated(ref$GlobalID), ]
+nn_index <- st_nn(ref, ref, k = 2, returnDist = TRUE)
+nearest_id <- sapply(nn_index$nn, `[`, 2)
+nearest_dist <- sapply(nn_index$dist, `[`, 2)
+
+ref$nearest_id <- nearest_id
+ref$horizontal_dist <- nearest_dist
+
+ref$H_nn <- ref$H_TLS[nearest_id]
+ref$delta_H <- ref$H_nn - ref$H_TLS  
+
+# Angle in radians
+ref$angle_rad <- atan2(ref$delta_H, ref$horizontal_dist)
 
 
 mycsf <- csf(sloop_smooth = FALSE, class_threshold = 0.5, cloth_resolution = 0.5, time_step = 0.65)
 
-ref <- st_read(ref_file)
-ref <- ref[!duplicated(ref$GlobalID), ]
 
 process_las <- function(las_path, ref, max_dist, prefix) {
   las <- readLAS(las_path)
@@ -32,8 +47,8 @@ process_las <- function(las_path, ref, max_dist, prefix) {
   centroids <- df %>%
     group_by(instance_pred) %>%
     summarise(
-      x = mean(X),
-      y = mean(Y),
+      x = min(X) + (max(X) - min(X))/2,
+      y = min(Y) + (max(Y) - min(Y))/2,
       .groups = "drop"
     )
   n_instance <- nrow(centroids)
@@ -52,6 +67,7 @@ process_las <- function(las_path, ref, max_dist, prefix) {
   # -----------------------------
   # Matching
   # -----------------------------
+  
   nn_idx <- st_nearest_feature(ref, trees_sf)
   nn_dist <- as.numeric(st_distance(ref, trees_sf[nn_idx,], by_element = TRUE))
   
@@ -81,13 +97,13 @@ process_las <- function(las_path, ref, max_dist, prefix) {
     dist = nn_dist,
     id = NA,
     height = NA,
-    height_ratio = NA,
+    height_error = NA,
     neighbors = NA
   )
   
   out$id[matched] <- trees$instance_pred[nn_idx[matched]]
   out$height[matched] <- trees$height[nn_idx[matched]]
-  out$height_ratio[matched] <- trees$height[nn_idx[matched]] / ref$H_TLS[matched]
+  out$height_error[matched] <- (trees$height[nn_idx[matched]] - ref$H_TLS[matched]) / ref$H_TLS[matched]
   out$neighbors[matched] <- trees$neighbor_count[nn_idx[matched]]
   precision <- sum(out$matched) / n_instance
   # add prefix to column names
@@ -118,14 +134,14 @@ ref <- bind_cols(
   chm_res
 )
 neighbors_list <- st_is_within_distance(ref, ref, dist = 5)
-ref$n_neighbors_10m <- lengths(neighbors_list) - 1
+ref$n_neighbors_5m <- lengths(neighbors_list) - 1
 
 st_write(ref, out_file, delete_dsn = TRUE)
 
 ref <- ref %>%
   mutate(neighbor_bin = cut(
-    n_neighbors_10m,
-    breaks = quantile(n_neighbors_10m, probs = seq(0, 1, 0.25), na.rm = TRUE),
+    n_neighbors_5m,
+    breaks = quantile(n_neighbors_5m, probs = seq(0, 1, 0.25), na.rm = TRUE),
     include.lowest = TRUE,
     labels = c("Low", "Medium", "High", "Very high")
   ))
@@ -157,7 +173,8 @@ ggplot(analysis_long, aes(x = neighbor_bin, y = success_rate, color = method, gr
   ) +
   theme_minimal()
 
-ggplot(ref, aes(x = n_neighbors_10m, y = ff3d_tile_matched)) +
+ggplot(ref, aes(x = angle_rad, y = ff3d_tile_matched)) +
+  labs ( x = "Elevation angle (rad)", y = "Detection success") +
   geom_jitter(height = 0.02, alpha = 0.3) +
   geom_smooth(method = "glm", method.args = list(family = "binomial")) +
   theme_minimal()
@@ -166,23 +183,23 @@ ggplot(ref, aes(x = n_neighbors_10m, y = ff3d_tile_matched)) +
 ref_clean <- ref %>%
   filter(
     !is.na(ff3d_tile_matched),
-    !is.na(n_neighbors_10m),
+    !is.na(n_neighbors_5m),
     !is.na(H_TLS)
   )
 ref_clean$Species <- as.factor(ref_clean$Species)
-model_null <- glm(ff3d_tile_matched ~ H_TLS,
-                  data = ref_clean, family = binomial)
-
-model_full <- glm(ff3d_tile_matched ~ H_TLS + n_neighbors_10m,
-                  data = ref_clean, family = binomial)
-
-anova(model_null, model_full, test = "Chisq")
-
+ref_clean$n_neighbors_5m <- as.numeric(ref_clean$n_neighbors_5m)
+ref_clean$H_TLS  <- as.numeric(ref_clean$H_TLS)
 
 #Interaction Model
-model_all <- glm(ff3d_tile_matched ~ H_TLS + n_neighbors_10m + DBH_Field + Species, 
+model_all <- glm(ff3d_tile_matched ~ H_TLS + DBH_Field + n_neighbors_5m + angle_rad , 
                   data = ref_clean, family = binomial)
 model_base <- glm(ff3d_tile_matched ~ H_TLS +DBH_Field + Species, 
                  data = ref_clean, family = binomial)
 anova(model_base, model_all, test = "Chisq")
 summary(model_all)
+
+
+library(corrplot)
+
+corrplot(cor_matrix, method = "color", type = "upper",
+         tl.cex = 0.7, number.cex = 0.6)
