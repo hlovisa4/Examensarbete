@@ -218,7 +218,7 @@ def biomass_analysis(df, output_folder):
 
 def main():
     ref = gpd.read_file("/mnt/c/Users/digit/Downloads/Examensarbete/Results/matched_trees.gpkg")
-    df = pd.read_csv("/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/biomass_height_distribution_summary_0.2.csv")
+    df = pd.read_csv("/mnt/c/Users/digit/Downloads/Examensarbete/Results/biomass_height_distribution_summary_0.2.csv")
     ref_subset = ref[["ff3d_tile_id", "ff3d_tile_dist", "ff3d_tile_matched", "DBH_Field", "H_TLS", "Species"]]
     df = df.merge(ref_subset, left_on="TreeID", right_on="ff3d_tile_id", how="left")
 
@@ -242,24 +242,7 @@ def main():
     bins = [0, 5, 10, 15, 20, 25, 30, 40, 50]
     labels = ['0-5cm', '5-10cm', '10-15cm', '15-20cm', '20-25cm', '25-30cm', '30-40cm', '40cm+']
     df['dbh_class'] = pd.cut(df['dbh_ref (cm)'], bins=bins, labels=labels)
-    bm_stem = np.zeros(len(df))
-    bm_branch = np.zeros(len(df))
-    for sp in ["Pine", "Spruce", "Birch"]:
-        mask = df["Species_name"] == sp
-        stem, branch = MarklundBiomass(
-            df.loc[mask, "dbh (cm)"].values * 10,
-            sp,
-            height_m=df.loc[mask, "Height_m"].values
-        )
-
-        if mask.sum() == 0:
-            continue
-
-        bm_stem[mask] = stem
-        bm_branch[mask] = branch
-    df["Biomass_stem"] = bm_stem
-    df["Biomass_branch"] = bm_branch
-
+    
 
     bm_stem = np.zeros(len(df))
     bm_branch = np.zeros(len(df))

@@ -22,7 +22,7 @@ def MarklundBiomass(diameter_mm, species, height_m=None):
 
     d = diameter_mm #/ 10.0  # convert mm → cm
 
-    if species == 1:
+    if species == "Pine":
 
         if height_m is None:
             # Pine: DBH only
@@ -45,7 +45,7 @@ def MarklundBiomass(diameter_mm, species, height_m=None):
 
         return bm_stem, bm_branch
 
-    elif species == 2:
+    elif species == "Spruce":
 
         if height_m is None:
             # Spruce: DBH only
@@ -69,7 +69,7 @@ def MarklundBiomass(diameter_mm, species, height_m=None):
 
         return bm_stem, bm_branch
 
-    elif species == 3:
+    elif species == "Birch":
 
         if height_m is None:
             bm_stem = np.exp(11.0735 * d / (d + 8.0) - 3.0932)         # B1
@@ -97,7 +97,7 @@ def calculate_biomass(tree_df):
     bm_stem = np.zeros(len(tree_df))
     bm_branch = np.zeros(len(tree_df))
 
-    for sp in [1, 2, 3]:
+    for sp in ["Pine", "Spruce", "Birch"]:
         mask = tree_df["Species"] == sp
 
         if mask.sum() == 0:
@@ -113,13 +113,3 @@ def calculate_biomass(tree_df):
 
     return bm_stem, bm_branch
 
-
-tree_df = gpd.read_file(r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_matched_trees_new.gpkg")
-
-# Compute biomass
-tree_df["biomass_stem"], tree_df["biomass_branch"] = calculate_biomass(tree_df)
-
-# Total biomass
-total_biomass = np.sum(tree_df["biomass_stem"] + tree_df["biomass_branch"])
-tree_df.to_file(r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_matched_trees_with_biomass.gpkg", driver="GPKG")
-print(f"Total biomass: {total_biomass:.2f} kg")

@@ -1,3 +1,4 @@
+from ast import If
 from collections import defaultdict
 
 import matplotlib
@@ -8,6 +9,7 @@ import os
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from calculate_biomass import MarklundBiomass
 
 #Requires biomass_venv!!
 
@@ -71,10 +73,29 @@ def process_tree(stem_path, canopy_path, csv_path, id, voxel_size):
     # Load data
     if not os.path.exists(stem_path) or not os.path.exists(canopy_path):
         print(f"Missing point cloud for {id}: stem={os.path.exists(stem_path)}, canopy={os.path.exists(canopy_path)}")
-        return
-    stem = load_xyz(stem_path)
-    foliage = load_xyz(canopy_path)
+        return pd.DataFrame(), [], []
+    stem_pc = load_xyz(stem_path)
+    foliage_pc = load_xyz(canopy_path)
     df = pd.read_csv(csv_path)
+    df["dbh (cm)"] = df[["DBH_cm_hlayer_0.1", "DBH_cm_hlayer_0.05", "DBH_cm_hlayer_0.5"]].min(axis=1)
+    bm_stem = np.zeros(len(df))
+    bm_branch = np.zeros(len(df))
+    for sp in ["Pine", "Spruce", "Birch"]:
+        mask = df["Species"] == sp
+        stem, branch = MarklundBiomass(
+            df.loc[mask, "dbh (cm)"].values * 10,
+            sp,
+            height_m=df.loc[mask, "Height_m"].values
+        )
+
+        if mask.sum() == 0:
+            continue
+
+        bm_stem[mask] = stem
+        bm_branch[mask] = branch
+    df["Biomass_stem"] = bm_stem
+    df["Biomass_branch"] = bm_branch
+
 
     biomass_stem = df["Biomass_stem"].values[0]
     biomass_foliage = df["Biomass_branch"].values[0]
@@ -82,11 +103,11 @@ def process_tree(stem_path, canopy_path, csv_path, id, voxel_size):
     #pc_count = df["Point Count"].values[0]
 
     # Heights
-    stem_top = np.max(stem[:, 2]) if len(stem) else 0
-    foliage_top = np.max(foliage[:, 2]) if len(foliage) else 0
+    stem_top = np.max(stem_pc[:, 2]) if len(stem_pc) else 0
+    foliage_top = np.max(foliage_pc[:, 2]) if len(foliage_pc) else 0
     total_bottom = min(
-        np.min(stem[:, 2]) if len(stem) else np.inf,
-        np.min(foliage[:, 2]) if len(foliage) else np.inf
+        np.min(stem_pc[:, 2]) if len(stem_pc) else np.inf,
+        np.min(foliage_pc[:, 2]) if len(foliage_pc) else np.inf
     )
 
     # Coverage
@@ -94,30 +115,25 @@ def process_tree(stem_path, canopy_path, csv_path, id, voxel_size):
     coverage_top = (stem_top) / (foliage_top )
     print(f"Stem coverage: {coverage_total:.2f}")
 
-    if coverage_total < COVERAGE_THRESHOLD:
-        print("Coverage below threshold → skipping voxel distribution")
-        stem_bins = np.zeros(len(HEIGHT_BINS))
-        foliage_bins = np.zeros(len(HEIGHT_BINS))
-        stem_layers = 0
-        foliage_layers = 0 
-    else:
-        # -----------------------------
-        # VOXELIZE
-        # -----------------------------
-        stem_voxels = voxelize(stem, voxel_size)
-        foliage_voxels = voxelize(foliage, voxel_size)
+    stem_biomass_new = coverage_total * biomass_stem
+    branch_biomass_new = biomass_foliage + (1 - coverage_total) * biomass_stem
+    # -----------------------------
+    # VOXELIZE
+    # -----------------------------
+    stem_voxels = voxelize(stem_pc, voxel_size)
+    foliage_voxels = voxelize(foliage_pc, voxel_size)
 
-        # -----------------------------
-        # DISTRIBUTE BIOMASS
-        # -----------------------------
-        stem_biomass_vox = distribute_biomass(stem_voxels, biomass_stem)
-        foliage_biomass_vox = distribute_biomass(foliage_voxels, biomass_foliage)
+    # -----------------------------
+    # DISTRIBUTE BIOMASS
+    # -----------------------------
+    stem_biomass_vox = distribute_biomass(stem_voxels, stem_biomass_new)
+    foliage_biomass_vox = distribute_biomass(foliage_voxels, branch_biomass_new)
 
-        # -----------------------------
-        # AGGREGATE HEIGHT BINS
-        # -----------------------------
-        stem_layers, stem_bins = aggregate_height_bins(stem_biomass_vox, voxel_size)
-        foliage_layers, foliage_bins = aggregate_height_bins(foliage_biomass_vox, voxel_size)
+    # -----------------------------
+    # AGGREGATE HEIGHT BINS
+    # -----------------------------
+    stem_layers, stem_bins = aggregate_height_bins(stem_biomass_vox, voxel_size)
+    foliage_layers, foliage_bins = aggregate_height_bins(foliage_biomass_vox, voxel_size)
 
     total_bins = stem_bins + foliage_bins
 
@@ -262,22 +278,22 @@ def plot_voxel_distribution(all_stem_layers, all_foliage_layers, aggregate_bins=
     plt.legend()
     plt.grid()
     plt.tight_layout()
-    plt.savefig(f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/per_voxel_distribution{suffix}.png", dpi=311)
+    plt.savefig(f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/per_voxel_distribution{suffix}.png", dpi=311)
     plt.close()
 
 if __name__ == "__main__":
-    input_path = r"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/yrt_final/"
+    input_path = r"/mnt/c/Users/digit/Downloads/Examensarbete/Results/yrt_final/"
     tree_list = [file.strip("_").split("_")[0] for file in os.listdir(input_path) if file.endswith("_results.csv")]
     all_stem_layers = {}
     all_foliage_layers = {}
     for voxel_size in VOXEL_SIZES:
         biomass_data = pd.DataFrame()
-        for id in ["tree1353"]: # tqdm(tree_list):
+        for id in tqdm(tree_list):
             print(f"Processing tree {id}...")
             biomass_dist, stem_layers, foliage_layers = process_tree(
-                stem_path=f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/yrt_final/pointclouds/stem/{id}_stempoints.ply",
-                canopy_path=f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/yrt_final/pointclouds/canopy/{id}_canopypoints.ply",
-                csv_path=f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/yrt_final/{id}_results.csv",
+                stem_path=f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/yrt_final/pointclouds/stem/{id}_stempoints.ply",
+                canopy_path=f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/yrt_final/pointclouds/canopy/{id}_canopypoints.ply",
+                csv_path=f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/yrt_final/{id}_results.csv",
                 id = id,
                 voxel_size = voxel_size
             )
@@ -287,7 +303,7 @@ if __name__ == "__main__":
 
             biomass_data = pd.concat([biomass_data, biomass_dist], ignore_index=True)
 
-        #biomass_data.to_csv(f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/biomass_height_distribution_summary_{voxel_size}.csv", index=False)
-    plot_voxel_distribution(all_stem_layers, all_foliage_layers, aggregate_bins=True)
+        biomass_data.to_csv(f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/biomass_height_distribution_summary_{voxel_size}.csv", index=False)
+    #plot_voxel_distribution(all_stem_layers, all_foliage_layers, aggregate_bins=True)
 
 
