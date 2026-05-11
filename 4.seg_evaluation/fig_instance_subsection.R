@@ -8,7 +8,7 @@ library(concaveman)
 # -----------------------------
 # Read Files
 # -----------------------------
-las_file_ff3d_full <- "C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/tile_ALS_clipped_to_reflist.las"
+las_file_ff3d_full <- "C:/Users/digit/Downloads/Examensarbete/Results/chm_segmentation/chm_ALS_clipped_to_reflist.las"
 ref_file <- "C:/Users/digit/Downloads/Examensarbete/Data/TreesTowerFoot240829.gpkg"
 
 ref <- st_read(ref_file, quiet = TRUE)
@@ -175,4 +175,4 @@ fig <- ggplot() +
     panel.grid.major = element_line(color = "grey85"),
     plot.title = element_text(face = "bold")
   )
-ggsave("C:/Users/digit/Downloads/Examensarbete/Examensarbete/4.seg_evaluation/segmentation_overview.png", fig, width = 10.5, height = 8.0, dpi = 400, bg = "white")
+ggsave("C:/Users/digit/Downloads/Examensarbete/Examensarbete/4.seg_evaluation/chm_segmentation_overview.png", fig, width = 10.5, height = 8.0, dpi = 400, bg = "white")
