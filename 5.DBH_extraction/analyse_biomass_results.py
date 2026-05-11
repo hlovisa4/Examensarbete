@@ -29,8 +29,8 @@ def dbh_extraction_analysis(df, output_folder):
 
     dbh_accuracy = df.groupby("dbh_class")[f"success"].mean() * 100
     #dbh_accuracy = dbh_accuracy.sort_values(ascending=False)
-
-    print(f"Overall DBH and Height Extraction Success Rate: {dbh_success_rate:.2%} (Total DBHs: {len(df[df["success"] == True])})")
+    total_dbhs = len(df[df["success"] == True])
+    print(f"Overall DBH and Height Extraction Success Rate: {dbh_success_rate:.2%} (Total DBHs: {total_dbhs})")
     print(f"Accuracy by DBH Class:")
     print(dbh_accuracy)
     print(f"Accuracy by Height Class:")
@@ -253,8 +253,8 @@ def biomass_analysis(df, output_folder):
 
 
 def main():
-    ref = gpd.read_file("/mnt/c/Users/Lovisa/Downloads/Examensarbete/4.seg_evaluation/Resultat/matched_trees.gpkg")
-    df = pd.read_csv("/mnt/c/Users/Lovisa/Downloads/Examensarbete/4.5.DBH_extraction/biomass_height_distribution_summary_0.2.csv")
+    ref = gpd.read_file("/mnt/c/Users/digit/Downloads/Examensarbete/Examensarbete/5.DBH_extraction/matched_trees.gpkg")
+    df = pd.read_csv("/mnt/c/Users/digit/Downloads/Examensarbete/Examensarbete/5.DBH_extraction/biomass_height_distribution_summary_0.2.csv")
     ref_subset = ref[["ff3d_tile_id", "ff3d_tile_dist", "ff3d_tile_matched", "DBH_Field", "H_TLS", "Species"]]
     df = df.merge(ref_subset, left_on="TreeID", right_on="ff3d_tile_id", how="left")
     #df = df[df["DBH_Field"] > 10]
@@ -264,12 +264,13 @@ def main():
     df["Species_name"] = df["Species_x"]
     df["dbh"] = df[["DBH_cm_hlayer_0.1", "DBH_cm_hlayer_0.05", "DBH_cm_hlayer_0.5"]].min(axis=1)
     df = df.drop(columns=["DBH_Field", "H_TLS", "DBH_cm_hlayer_0.1", "DBH_cm_hlayer_0.5", "DBH_cm_hlayer_0.05", "Species_x", "Species_y"])
-    #df["dbh_error"] = df["dbh"] - df["dbh_ref"]
-    #df["abs_dbh_error"] = np.abs(df["dbh_error"])
-    #bad_trees = df[df["abs_dbh_error"] > 10]["ff3d_tile_id"].unique() 
-    #df = df[~df["ff3d_tile_id"].isin(bad_trees)]
+    df["dbh_error"] = df["dbh"] - df["dbh_ref"]
+    df["abs_dbh_error"] = np.abs(df["dbh_error"])
+    bad_trees = df[df["abs_dbh_error"] > 10]["ff3d_tile_id"].unique() 
+    df = df[~df["ff3d_tile_id"].isin(bad_trees)]
+    
     #id_to_species = {1: "Pine", 2: "Spruce", 3: "Birch", 7: "Ädel", 11: "Dead" }
-    # df["Species_name"] = df["Species"].map(id_to_species)
+    #df["Species_name"] = df["Species"].map(id_to_species)
 
     bins = [0, 5, 10, 15, 20, 25, 30, 40, 50]
     labels = ['0-5m', '5-10m', '10-15m', '15-20m', '20-25m', '25-30m', '30-40m', '40m+']
@@ -297,7 +298,7 @@ def main():
         bm_branch[mask] = branch
     df["Biomass_stem_ref"] = bm_stem
     df["Biomass_branch_ref"] = bm_branch
-    output_folder = "/mnt/c/Users/Lovisa/Downloads/biomass_analysis/"
+    output_folder = "/mnt/c/Users/digit/Downloads/Examensarbete/Examensarbete/5.DBH_extraction/biomass_analysis_badremoved/"
     os.makedirs(output_folder, exist_ok=True)
    
     dbh_extraction_analysis(df, output_folder)
