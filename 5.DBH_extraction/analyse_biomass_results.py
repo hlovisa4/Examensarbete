@@ -396,6 +396,7 @@ def main():
     labels = ['0-5m', '5-10m', '10-15m', '15-20m', '20-25m', '25-30m', '30-40m', '40m+']
     df['height_class'] = pd.cut(df['height_ref'], bins=bins, labels=labels)
     df.loc[df["dbh"] > 50, "dbh"] = np.nan
+    df.loc[df["Species_name"] == "Unknown", "Species_name"] = "Other"
 
     bins = [0, 5, 10, 15, 20, 25, 30, 40, 50]
     labels = ['0-5cm', '5-10cm', '10-15cm', '15-20cm', '20-25cm', '25-30cm', '30-40cm', '40cm+']
