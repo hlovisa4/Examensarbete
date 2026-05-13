@@ -234,11 +234,22 @@ def plot_dbh_error_vs_height_error(df, output_folder):
     # ---------------------------------
     plt.figure(figsize=(6, 6))
 
-    plt.scatter(
-        df["height_error"],
-        df["dbh_error"],
-        alpha=0.5
-    )
+    species_colors = {
+        "Pine": "orange",
+        "Spruce": "green",
+        "Birch": "blue"
+    }
+
+    for sp, group in df.groupby("Species_name"):
+        plt.scatter(
+            group["height_error"],
+            group["dbh_error"],
+            alpha=0.5,
+            label=sp,
+            color=species_colors.get(sp, "gray")
+        )
+
+    plt.legend()
 
     slope, intercept, r_value, p_value, std_err = linregress(
         df["height_error"],
@@ -262,6 +273,7 @@ def plot_dbh_error_vs_height_error(df, output_folder):
 
     plt.xlabel("Height Error (m)")
     plt.ylabel("DBH Error (cm)")
+    
 
     plt.text(
         0.05, 0.95,
