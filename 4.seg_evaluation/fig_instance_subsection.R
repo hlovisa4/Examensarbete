@@ -19,7 +19,7 @@ ref <- st_read(ref_file, quiet = TRUE)
 plot_center_x <- 731337.678
 plot_center_y <- 7134016.31
 
-plot_radius <- 20   # meters
+plot_radius <- 80  # meters
 max_dist <- 1.8
 
 # -----------------------------
@@ -121,6 +121,62 @@ for(id in instance_ids){
 }
 
 crowns_sf <- do.call(rbind, polygon_list)
+# -----------------------------
+# Match reference trees to polygons
+# -----------------------------
+
+# Ensure valid geometries
+crowns_sf <- st_make_valid(crowns_sf)
+
+# Spatial join:
+# adds polygon attributes to reference trees
+ref_matches <- st_join(
+  ref_sub,
+  crowns_sf,
+  join = st_within,
+  left = TRUE
+)
+
+# Trees inside a segmented polygon
+ref_inside <- ref_matches %>%
+  filter(!is.na(instance_pred))
+
+# Trees NOT inside any polygon
+ref_outside <- ref_matches %>%
+  filter(is.na(instance_pred))
+
+# Counts
+n_total_ref <- nrow(ref_sub)
+n_inside <- nrow(ref_inside)
+n_outside <- nrow(ref_outside)
+
+cat("\n--- Segmentation Coverage ---\n")
+cat("Total reference trees:", n_total_ref, "\n")
+cat("Inside segmented polygon:", n_inside, "\n")
+cat("Outside segmented polygon:", n_outside, "\n")
+cat("Coverage (%):", round(100 * n_inside / n_total_ref, 1), "\n")
+
+# -----------------------------
+# Optional:
+# How many reference trees per segment
+# -----------------------------
+
+segment_stats <- ref_inside %>%
+  st_drop_geometry() %>%
+  group_by(instance_pred) %>%
+  summarise(
+    n_reference_trees = n(),
+    .groups = "drop"
+  )
+
+print(segment_stats)
+
+# Segments containing multiple reference trees
+multi_match_segments <- segment_stats %>%
+  filter(n_reference_trees > 1)
+
+cat("\nSegments with multiple reference trees:",
+    nrow(multi_match_segments), "\n")
 
 # -----------------------------
 # Plot
@@ -175,4 +231,4 @@ fig <- ggplot() +
     panel.grid.major = element_line(color = "grey85"),
     plot.title = element_text(face = "bold")
   )
-ggsave("C:/Users/digit/Downloads/Examensarbete/Examensarbete/4.seg_evaluation/chm_segmentation_overview.png", fig, width = 10.5, height = 8.0, dpi = 400, bg = "white")
+ggsave("C:/Users/digit/Downloads/Examensarbete/Examensarbete/4.seg_evaluation/test_segmentation_overview.png", fig, width = 10.5, height = 8.0, dpi = 400, bg = "white")

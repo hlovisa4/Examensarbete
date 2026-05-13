@@ -214,7 +214,115 @@ def stem_Qanalysis(df, output_folder):
     print(f"Average Stem Coverage: {stem_cov_avg:.2%}, Stem Coverage Std: {stem_cov_std:.2%}")
     return stem_cov_avg, stem_cov_std
 
+def plot_dbh_error_vs_height_error(df, output_folder):
+    """
+    Plots DBH estimation error against height estimation error.
+    """
 
+    df = df.dropna(subset=["dbh", "dbh_ref", "Height_m", "height_ref"]).copy()
+
+    # Absolute errors
+    df["dbh_error"] = df["dbh"] - df["dbh_ref"]
+    df["height_error"] = df["Height_m"] - df["height_ref"]
+
+    # Relative errors
+    df["dbh_rel_error"] = (df["dbh"] - df["dbh_ref"]) / df["dbh_ref"]
+    df["height_rel_error"] = (df["Height_m"] - df["height_ref"]) / df["height_ref"]
+
+    # ---------------------------------
+    # Absolute error plot
+    # ---------------------------------
+    plt.figure(figsize=(6, 6))
+
+    plt.scatter(
+        df["height_error"],
+        df["dbh_error"],
+        alpha=0.5
+    )
+
+    slope, intercept, r_value, p_value, std_err = linregress(
+        df["height_error"],
+        df["dbh_error"]
+    )
+
+    x = np.linspace(
+        df["height_error"].min(),
+        df["height_error"].max(),
+        100
+    )
+
+    y = slope * x + intercept
+
+    plt.plot(x, y)
+
+    r2 = r_value**2
+
+    plt.axhline(0, linestyle="--", color="gray", linewidth=1)
+    plt.axvline(0, linestyle="--", color="gray", linewidth=1)
+
+    plt.xlabel("Height Error (m)")
+    plt.ylabel("DBH Error (cm)")
+
+    plt.text(
+        0.05, 0.95,
+        f"$R^2 = {r2:.3f}$\n$p = {p_value:.3e}$",
+        transform=plt.gca().transAxes,
+        verticalalignment='top'
+    )
+
+    plt.tight_layout()
+    plt.savefig(f"{output_folder}/dbh_error_vs_height_error.png", dpi=311)
+    plt.close()
+
+    # ---------------------------------
+    # Relative error plot
+    # ---------------------------------
+    plt.figure(figsize=(6, 6))
+
+    plt.scatter(
+        df["height_rel_error"],
+        df["dbh_rel_error"],
+        alpha=0.5
+    )
+
+    slope, intercept, r_value, p_value, std_err = linregress(
+        df["height_rel_error"],
+        df["dbh_rel_error"]
+    )
+
+    x = np.linspace(
+        df["height_rel_error"].min(),
+        df["height_rel_error"].max(),
+        100
+    )
+
+    y = slope * x + intercept
+
+    plt.plot(x, y)
+
+    r2 = r_value**2
+
+    plt.axhline(0, linestyle="--", color="gray", linewidth=1)
+    plt.axvline(0, linestyle="--", color="gray", linewidth=1)
+
+    plt.xlabel("Relative Height Error")
+    plt.ylabel("Relative DBH Error")
+
+    plt.text(
+        0.05, 0.95,
+        f"$R^2 = {r2:.3f}$\n$p = {p_value:.3e}$",
+        transform=plt.gca().transAxes,
+        verticalalignment='top'
+    )
+
+    plt.tight_layout()
+    plt.savefig(f"{output_folder}/dbh_rel_error_vs_height_rel_error.png", dpi=311)
+    plt.close()
+
+    print(
+        f"DBH vs Height Error Correlation:\n"
+        f"Absolute error R²: {r2:.3f}, p={p_value:.3e}"
+    )
 
 def biomass_analysis(df, output_folder):
     """
@@ -267,7 +375,7 @@ def main():
     df["dbh_error"] = df["dbh"] - df["dbh_ref"]
     df["abs_dbh_error"] = np.abs(df["dbh_error"])
     bad_trees = df[df["abs_dbh_error"] > 10]["ff3d_tile_id"].unique() 
-    df = df[~df["ff3d_tile_id"].isin(bad_trees)]
+    #df = df[~df["ff3d_tile_id"].isin(bad_trees)]
     
     #id_to_species = {1: "Pine", 2: "Spruce", 3: "Birch", 7: "Ädel", 11: "Dead" }
     #df["Species_name"] = df["Species"].map(id_to_species)
@@ -298,7 +406,7 @@ def main():
         bm_branch[mask] = branch
     df["Biomass_stem_ref"] = bm_stem
     df["Biomass_branch_ref"] = bm_branch
-    output_folder = "/mnt/c/Users/digit/Downloads/Examensarbete/Examensarbete/5.DBH_extraction/biomass_analysis_badremoved/"
+    output_folder = "/mnt/c/Users/digit/Downloads/tets/"
     os.makedirs(output_folder, exist_ok=True)
    
     dbh_extraction_analysis(df, output_folder)
@@ -307,6 +415,7 @@ def main():
     height_analysis(df,output_folder)
     plot_dbh_height(df, output_folder)
     biomass_analysis(df, output_folder)
+    plot_dbh_error_vs_height_error(df, output_folder)
     lme(df, output_folder)
     print(f"Analysis complete. Results saved to: {output_folder}")
 
