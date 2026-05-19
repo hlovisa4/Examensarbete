@@ -55,7 +55,7 @@ def aggregate_height_bins(biomass_voxels, voxel_size):
     bins = np.zeros(len(HEIGHT_BINS))
     layers = defaultdict(list)
     for (ix, iy, iz), biomass in biomass_voxels.items():
-        # use voxel center (better!)
+        # use voxel center
         z = (iz + 0.5) * voxel_size
         layers[z].append(((ix + 0.5) * voxel_size, (iy + 0.5) * voxel_size))
         for i, (zmin, zmax) in enumerate(HEIGHT_BINS):
@@ -65,13 +65,14 @@ def aggregate_height_bins(biomass_voxels, voxel_size):
 
     return layers, bins
 
-def voxels_to_dataframe(voxel_dict, voxel_size, tree_id, component, stem_centers = None):
+def voxels_to_dataframe(voxel_dict, voxel_size, tree_id, component, stem_centers):
     rows = []
 
     for (ix, iy, iz), biomass in voxel_dict.items():
         direction = None
 
         if component == "foliage" and stem_centers is not None:
+            #print(f"Assigning direction for voxel ({ix}, {iy}, {iz}) with biomass {biomass:.2f}")
             direction = assign_direction(
                 ix, iy, iz,
                 stem_centers,
@@ -207,7 +208,6 @@ def process_tree(stem_path, canopy_path, csv_path, id, voxel_size):
         stem_voxels,
         voxel_size
     )
-
     # -----------------------------
     # DISTRIBUTE BIOMASS
     # -----------------------------
@@ -226,7 +226,8 @@ def process_tree(stem_path, canopy_path, csv_path, id, voxel_size):
         foliage_biomass_vox,
         voxel_size,
         id,
-        "foliage"
+        "foliage",
+        stem_centers
     )
 
     voxel_df = pd.concat(
@@ -413,7 +414,7 @@ if __name__ == "__main__":
         #biomass_data.to_csv(f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/biomass_height_distribution_summary_{voxel_size}.csv", index=False)
     #plot_voxel_distribution(all_stem_layers, all_foliage_layers, aggregate_bins=True)
     all_voxel_data = pd.concat(all_voxel_data, ignore_index=True)
-
+    print(all_voxel_data["direction"].unique())
     all_voxel_data.to_parquet(
         f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/voxel_biomass.parquet",
         index=False

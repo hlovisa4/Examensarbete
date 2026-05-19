@@ -8,12 +8,12 @@ from tqdm import tqdm
 # -----------------------------
 # INPUT LAS FILE
 # -----------------------------
-tls_path = r"C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/tls_als_ff3d_final.las"
+tls_path = r"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/tls_als_ff3d_final.las"
 
 # -----------------------------
 # OUTPUT DIRECTORY
 # -----------------------------
-out_dir = r"C:/Users/digit/Downloads/Examensarbete/Results/saptrees/"
+out_dir = r"/mnt/c/Users/digit/Downloads/Examensarbete/Results/saptrees/"
 os.makedirs(out_dir, exist_ok=True)
 
 # -----------------------------
@@ -21,7 +21,7 @@ os.makedirs(out_dir, exist_ok=True)
 # -----------------------------
 centers = [
     ("tree408", 731337.678, 7134016.31),
-    ("tree413", 731331.256, 7134021.836),
+    ("tree403", 731341.472, 7134019.67),
 ]
 
 radius = 2.5  # meters
@@ -49,11 +49,11 @@ with laspy.open(tls_path) as reader:
         writers[name] = laspy.open(out_path, mode="w", header=header)
 
     # Use context managers
-    with writers["tree408"] as writer408, writers["tree413"] as writer413:
+    with writers["tree408"] as writer408, writers["tree403"] as writer403:
 
         writer_map = {
             "tree408": writer408,
-            "tree413": writer413,
+            "tree403": writer403,
         }
 
         # Iterate through LAS in chunks

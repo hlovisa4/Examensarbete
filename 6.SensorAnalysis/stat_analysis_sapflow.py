@@ -1,16 +1,10 @@
 import os
 import numpy as np
 import pandas as pd
-
-from scipy.stats import (
-    ttest_rel,
-    wilcoxon,
-    shapiro,
-    friedmanchisquare
-)
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 import statsmodels.formula.api as smf
-from statsmodels.stats.anova import AnovaRM
 
 # ==========================================================
 # SETTINGS
@@ -24,8 +18,8 @@ VOXEL_PARQUET = (
 )
 
 SAPFLOW_CSV = (
-    "/mnt/c/Users/digit/Downloads/Examensarbete/Data/"
-    "sapflow_measurements.csv"
+    "/mnt/c/Users/digit/Downloads/Examensarbete/Data/Sap_flow_data"
+    "/Stack of Subset of radar_47355_one_res_Feb22_2026.txt"
 )
 
 OUTPUT_DIR = (
@@ -41,7 +35,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 voxels = pd.read_parquet(VOXEL_PARQUET)
 
-sap = pd.read_csv(SAPFLOW_CSV)
+sap = pd.read_csv(SAPFLOW_CSV, parse_dates=["TIMESTAMP"])
 
 # ----------------------------------------------------------
 # EXPECTED SAPFLOW FORMAT
@@ -57,9 +51,102 @@ sap = pd.read_csv(SAPFLOW_CSV)
 # 12,8,S,10.1
 #
 # ----------------------------------------------------------
+def direction_short(d):
+    if d == "North":
+        return "N"
+    elif d == "South":
+        return "S"
+    return None
 
-sap["direction"] = sap["direction"].str.upper()
 
+def treeid(t):
+    if t.split("_")[0] == "Pine":
+        return "tree403"
+    elif t.split("_")[0] == "Spruce":
+        return "tree408"
+    return None
+
+
+sap["direction"] = sap["Orientation"].apply(direction_short)
+sap["height"] = sap["Height"].str.split(" ").str[0].astype(float)
+sap["tree_id"] = sap["Label"].apply(treeid)
+sap["sap_flow"] = sap["Mean Js"].astype(float)
+sap.drop(columns=["Orientation", "Height", "Mean Js"], inplace=True)
+
+print(sap.head())
+print(voxels.head())
+
+sap["date"] = sap["TIMESTAMP"].dt.date
+
+# --- Calculate daily mean sap flow per sensor ---
+daily_mean = (
+    sap.groupby(["Label", "date"], as_index=False)["sap_flow"]
+    .mean()
+)
+daily_mean = (
+    sap.groupby(
+        ["tree_id", "Label", "direction", "height", "date"],
+        as_index=False
+    )["sap_flow"]
+    .mean()
+)
+north_colors = {
+    1: "#84c1e1",   # light blue
+    8: "#3182bd",   # medium blue
+    15: "#08519c",  # dark blue
+}
+
+south_colors = {
+    1: "#f1de4f",   # light yellow
+    8: "#fec44f",   # medium yellow
+    15: "#d95f0e",  # dark orange/yellow
+}
+
+# --- One plot per tree ---
+tree_ids = daily_mean["tree_id"].unique()
+
+for tree_id in tree_ids:
+
+    tree_data = daily_mean[
+        daily_mean["tree_id"] == tree_id
+    ]
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+
+    # Plot all sensors for this tree
+    for label in tree_data["Label"].unique():
+
+        sensor_data = (
+            tree_data[tree_data["Label"] == label]
+            .sort_values("date")
+        )
+
+        direction = sensor_data["direction"].iloc[0]
+        height = sensor_data["height"].iloc[0]
+        if direction == "N":
+            color = north_colors[int(height)]
+        else:
+            color = south_colors[int(height)]
+        ax.plot(
+            sensor_data["date"],
+            sensor_data["sap_flow"],
+            label=f"{direction} {height} m",
+            color=color
+        )
+
+    ax.set_title(f"Daily Mean Sap Flow — {tree_id}")
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Mean daily sap flow")
+    ax.legend(title="Sensor")
+    ax.grid(True)
+
+    plt.tight_layout()
+    plt.savefig(
+        f"{OUTPUT_DIR}/daily_sap_flow_by_sensor_{tree_id}.png",
+        dpi=300,
+        bbox_inches="tight"
+    )
+    plt.close()
 # ==========================================================
 # KEEP FOLIAGE ONLY
 # ==========================================================
@@ -68,6 +155,66 @@ foliage = voxels[
     (voxels["component"] == "foliage") &
     (voxels["direction"].notna())
 ].copy()
+# ==========================================================
+# ONE COMBINED VERTICAL DISTRIBUTION PLOT
+# ==========================================================
+
+tree_ids = ["tree403", "tree408"]
+
+fig, axes = plt.subplots(
+    1,
+    2,
+    figsize=(14, 9),
+    sharey=True
+)
+
+for ax, tree_id in zip(axes, tree_ids):
+
+    for voxel_size in VOXEL_SIZES:
+
+        tree_data = (
+            foliage[
+                (foliage["tree_id"] == tree_id) &
+                (foliage["voxel_size"] == voxel_size)
+            ]
+            .groupby("z")["biomass"]
+            .sum()
+            .reset_index()
+            .sort_values("z")
+        )
+        tree_data["biomass_density"] = (
+            tree_data["biomass"] / voxel_size
+        )
+
+        ax.plot(
+            tree_data["biomass_density"],
+            tree_data["z"],
+            linewidth=2,
+            label=f"{voxel_size} m"
+        )
+
+    ax.set_title(tree_id, fontsize=14)
+    ax.set_xlabel("Foliage biomass density (kg/m³)")
+    ax.grid(True)
+    ax.legend(title="Voxel size")
+
+axes[0].set_ylabel("Height (m)")
+fig.suptitle(
+    "Vertical foliage biomass distribution",
+    fontsize=16
+)
+plt.tight_layout()
+plot_path = (
+    f"{OUTPUT_DIR}/"
+    "vertical_foliage_distribution_combined.png"
+)
+plt.savefig(
+    plot_path,
+    dpi=300,
+    bbox_inches="tight"
+)
+plt.close()
+print(f"Saved combined plot: {plot_path}")
 
 # ==========================================================
 # HELPER FUNCTIONS
@@ -81,51 +228,22 @@ def print_section(title):
 
 def paired_test(df, col1, col2, label=""):
 
-    paired = df[[col1, col2]].dropna()
+    paired = df[["tree_id", col1, col2]].dropna()
+    print(paired.head())
+    diff = paired[col2] / paired[col1]
+    print(f"Differences between {col1} and {col2}:")
+    print(diff)
 
-    if len(paired) < 3:
-        print(f"{label}: too few samples")
-        return
-
-    diff = paired[col1] - paired[col2]
-
-    shapiro_p = shapiro(diff).pvalue
-
-    print(f"\n{label}")
-    print(f"N = {len(paired)}")
-    print(f"Normality p = {shapiro_p:.4f}")
-
-    if shapiro_p > 0.05:
-
-        stat, p = ttest_rel(
-            paired[col1],
-            paired[col2]
-        )
-
-        print("Paired t-test")
-        print(f"t = {stat:.4f}")
-        print(f"p = {p:.6f}")
-
-    else:
-
-        stat, p = wilcoxon(
-            paired[col1],
-            paired[col2]
-        )
-
-        print("Wilcoxon signed-rank")
-        print(f"W = {stat:.4f}")
-        print(f"p = {p:.6f}")
 
 
 # ==========================================================
 # MAIN ANALYSIS
 # ==========================================================
 
-all_model_results = []
 
+sap = sap[sap["TIMESTAMP"] < "2025-09-01"]
 for voxel_size in VOXEL_SIZES:
-
+    all_model_results = {}
     print_section(f"VOXEL SIZE {voxel_size}")
 
     vox = foliage[
@@ -133,7 +251,7 @@ for voxel_size in VOXEL_SIZES:
     ].copy()
 
     # ======================================================
-    # 1. TOTAL NORTH/SOUTH BIOMASS
+    # 1. TOTAL NORTH/SOUTH BIOMASS check
     # ======================================================
 
     biomass_ns = (
@@ -155,7 +273,7 @@ for voxel_size in VOXEL_SIZES:
     )
 
     # ======================================================
-    # 2. SAP FLOW N/S COMPARISON
+    # 2. SAP FLOW N/S COMPARISON check
     # ======================================================
 
     sap_ns = (
@@ -197,24 +315,13 @@ for voxel_size in VOXEL_SIZES:
     print_section("Height effect on sap flow")
 
     valid = pivot_height.dropna()
-
-    if len(valid) > 3:
-
-        stat, p = friedmanchisquare(
-            valid[1.3],
-            valid[8],
-            valid[14]
-        )
-
-        print("Friedman repeated-measures test")
-        print(f"Statistic = {stat:.4f}")
-        print(f"p = {p:.6f}")
+    print(valid.head())
 
     # ======================================================
     # 4. BIOMASS ABOVE SENSOR HEIGHT
     # ======================================================
 
-    sensor_heights = [1.3, 8, 14]
+    sensor_heights = [1.3, 8, 15]
 
     biomass_above = []
 
@@ -237,6 +344,7 @@ for voxel_size in VOXEL_SIZES:
         biomass_above,
         ignore_index=True
     )
+    print(biomass_above.head())
 
     # ======================================================
     # 5. MERGE WITH SAP FLOW
@@ -254,11 +362,103 @@ for voxel_size in VOXEL_SIZES:
         },
         inplace=True
     )
+    model_df = (
+        model_df.groupby(
+            [
+                "tree_id",
+                "height",
+                "direction",
+                "foliage_above"
+            ]
+        )["sap_flow"]
+        .mean()
+        .reset_index()
+    )
 
     model_df["direction_bin"] = (
-        model_df["direction"] == "N"
-    ).astype(int)
+            model_df["direction"] == "N"
+        ).astype(int)
+    print_section(
+        "Plotting sap flow vs foliage above sensor (tree comparison)"
+    )
 
+    plot_df = (
+        model_df.groupby(
+            [
+                "tree_id",
+                "height",
+                "direction",
+                "foliage_above"
+            ]
+        )["sap_flow"]
+        .mean()
+        .reset_index()
+    )
+
+    trees = plot_df["tree_id"].unique()
+
+    fig, axes = plt.subplots(
+        1,
+        2,
+        figsize=(14, 6),
+        sharey=True,
+        sharex=True
+    )
+
+    for ax, tree in zip(axes, trees):
+
+        sub = plot_df[plot_df["tree_id"] == tree]
+
+        sns.scatterplot(
+            data=sub,
+            x="foliage_above",
+            y="sap_flow",
+            hue="direction",
+            style="height",
+            s=80,
+            ax=ax
+        )
+
+        sns.lineplot(
+            data=sub.sort_values("foliage_above"),
+            x="foliage_above",
+            y="sap_flow",
+            hue="direction",
+            style="height",
+            legend=False,
+            ax=ax
+        )
+
+        ax.set_title(f"Tree {tree}")
+        ax.set_xlabel("Foliage biomass above sensor")
+        ax.grid(True, alpha=0.3)
+
+    axes[0].set_ylabel("Mean sap flow")
+
+    # move legend outside (only once)
+    handles, labels = axes[0].get_legend_handles_labels()
+    axes[0].legend_.remove()
+    axes[1].legend(handles, labels, bbox_to_anchor=(1.05, 1), loc="upper left")
+
+    plt.suptitle(
+        f"Sap flow vs foliage above sensor (voxel size = {voxel_size} m)",
+        y=1.02
+    )
+
+    plt.tight_layout()
+
+    plot_path = (
+        f"{OUTPUT_DIR}/"
+        f"sapflow_vs_foliage_bytree_{voxel_size}.png"
+    )
+
+    plt.savefig(
+        plot_path,
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    plt.close()
     # ======================================================
     # 6. MIXED EFFECT MODEL
     # ======================================================
@@ -266,31 +466,24 @@ for voxel_size in VOXEL_SIZES:
     print_section("Mixed effects model")
 
     try:
+        for param in ["height", "direction_bin", "foliage_above"]:
+            for tree_id in model_df["tree_id"].unique():
+                df_sample = model_df[model_df["tree_id"] == tree_id]
+                model = smf.ols(f"sap_flow ~ {param}", data=df_sample)
 
-        model = smf.mixedlm(
-            (
-                "sap_flow ~ "
-                "height + "
-                "direction_bin + "
-                "foliage_above"
-            ),
-            model_df,
-            groups=model_df["tree_id"]
-        )
+                result = model.fit()
+                print(result.summary())
 
-        result = model.fit()
+                out_path = (
+                    f"{OUTPUT_DIR}/"
+                    f"mixed_model_{voxel_size}_{param}_{tree_id}.txt"
+                )
 
-        print(result.summary())
+                with open(out_path, "w") as f:
+                    f.write(f"Model for {param} (tree {tree_id}):\n\n")
+                    f.write(result.summary().as_text())
 
-        out_path = (
-            f"{OUTPUT_DIR}/"
-            f"mixed_model_{voxel_size}.txt"
-        )
-
-        with open(out_path, "w") as f:
-            f.write(result.summary().as_text())
-
-        all_model_results.append(result)
+                all_model_results[(param, tree_id)] = result
 
     except Exception as e:
 
@@ -308,8 +501,7 @@ for voxel_size in VOXEL_SIZES:
         model2 = smf.mixedlm(
             (
                 "sap_flow ~ "
-                "height * direction_bin + "
-                "foliage_above"
+                "height * direction_bin * foliage_above" 
             ),
             model_df,
             groups=model_df["tree_id"]
@@ -332,82 +524,12 @@ for voxel_size in VOXEL_SIZES:
         print("Interaction model failed:")
         print(e)
 
-    # ======================================================
-    # 8. TREE-SPECIFIC ASYMMETRY
-    # ======================================================
+    out_path = (
+                f"{OUTPUT_DIR}/"
+                f"all_models_{voxel_size}.txt"
+            )
 
-    print_section("Asymmetry analysis")
-
-    asym = biomass_ns.copy()
-
-    asym["biomass_ratio"] = (
-        asym["N"] / asym["S"]
-    )
-
-    sap_asym = sap_ns.copy()
-
-    sap_asym["sap_ratio"] = (
-        sap_asym["N"] / sap_asym["S"]
-    )
-
-    asym_df = asym.merge(
-        sap_asym,
-        on="tree_id",
-        suffixes=("_bio", "_sap")
-    )
-
-    try:
-
-        corr = asym_df[
-            ["biomass_ratio", "sap_ratio"]
-        ].corr()
-
-        print(corr)
-
-        corr.to_csv(
-            f"{OUTPUT_DIR}/"
-            f"asymmetry_correlation_{voxel_size}.csv"
-        )
-
-    except Exception as e:
-
-        print(e)
-
-# ==========================================================
-# OPTIONAL EXTRA ANALYSES
-# ==========================================================
-
-print_section("SUGGESTED EXTRA ANALYSES")
-
-print("""
-1. Species-specific models
-   sap_flow ~ height + direction + foliage_above + species
-
-2. Nonlinear height response
-   Use splines or GAMs
-
-3. Relative biomass instead of absolute
-   foliage_above / total_foliage
-
-4. Vertical foliage distribution metrics:
-   - center of mass
-   - skewness
-   - canopy depth
-
-5. Lagged sap flow relationships
-   if temporal measurements exist
-
-6. Random slopes mixed models:
-   allow height response to vary by tree
-
-7. Compare voxel resolutions:
-   AIC/BIC between voxel sizes
-
-8. Spatial autocorrelation:
-   Does local canopy clustering affect sap flow?
-
-9. Include stem biomass above sensor
-
-10. Wind/light exposure asymmetry:
-   compare with crown directionality
-""")
+    with open(out_path, "w") as f:
+        for r in all_model_results:
+            f.write(f"Model for {r[0]} (tree {r[1]}):\n\n")
+            f.write(all_model_results[r].summary().as_text())
