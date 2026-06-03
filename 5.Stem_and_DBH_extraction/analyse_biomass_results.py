@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import r2_score, root_mean_squared_error
+from sklearn.metrics import r2_score, root_mean_squared_error, mean_absolute_percentage_error
 import geopandas as gpd
 import os
 from calculate_biomass import MarklundBiomass
@@ -43,7 +43,7 @@ def lme(df, output_folder):
     df = df.dropna(subset=["dbh", "dbh_ref", "height_ref", "Species_name"])
     df["dbh_error"] = df["dbh"] - df["dbh_ref"]
     df["abs_dbh_error"] = np.abs(df["dbh_error"])
-    bad_trees = df[df["abs_dbh_error"] > 10]["ff3d_tile_id"].unique() 
+    bad_trees = df[df["dbh_error"] < -7]["ff3d_tile_id"].unique() 
     print(f"FF3D ids for trees with > 10cm dbh error: {', '.join(map(str, bad_trees))}")
     result = smf.ols(
         "dbh_error ~ Species_name + dbh_ref + height_ref + ff3d_tile_dist ",
@@ -69,6 +69,7 @@ def dbh_analysis(df, output_folder):
     ref_dbh = df["dbh_ref"]
     bias = np.mean(dbh - ref_dbh)
     bias_std = np.std(dbh - ref_dbh)
+    mape = mean_absolute_percentage_error(ref_dbh, dbh)
     rel_error = np.mean(np.abs(dbh - ref_dbh) / ref_dbh)
     rel_error_std = np.std(np.abs(dbh - ref_dbh) / ref_dbh)
     rmse = root_mean_squared_error(ref_dbh, dbh)
@@ -90,7 +91,7 @@ def dbh_analysis(df, output_folder):
     plt.ylabel("Estimated DBH (cm)")
     plt.xlabel("Reference DBH (cm)")
     plt.savefig(f"{output_folder}/dbh.png", dpi=311)
-    print(f"DBH Bias: {bias:.2f} cm, DBH Bias Std: {bias_std:.2f} cm, RMSE: {rmse:.2f}, Relative DBH Error: {rel_error:.2%}, Relative DBH Error Std: {rel_error_std:.2%}, R²: {r2:.3f}")
+    print(f"DBH Bias: {bias:.2f} cm, RMSE: {rmse:.2f}, MAPE: {mape:.2%}, R²: {r2:.3f}")
     return bias, bias_std, rel_error, rel_error_std, r2
 
 def height_analysis(df, output_folder):
@@ -102,10 +103,10 @@ def height_analysis(df, output_folder):
     height = df["Height_m"]
     ref_height = df["height_ref"]
     bias = np.mean(height - ref_height)
-    bias_std = np.std(height - ref_height)
     rel_error = np.mean(np.abs(height - ref_height) / ref_height)
     rel_error_std = np.std(np.abs(height - ref_height) / ref_height)
     rmse = root_mean_squared_error(ref_height, height)
+    mape = mean_absolute_percentage_error(ref_height, height)
     plt.figure(figsize=(6, 6))
     plt.scatter(ref_height, height, alpha=0.5)
     slope, intercept, r_value, p_value, std_err = linregress(ref_height, height)
@@ -132,8 +133,8 @@ def height_analysis(df, output_folder):
     plt.close()
     #plt.savefig(f"{output_folder}/height_error_ff3d.png", dpi=311)
 
-    print(f"Height Bias: {bias:.2f} m, Height Bias Std: {bias_std:.2f} m, RMSE: {rmse:.2f}, Relative Height Error: {rel_error:.2%}, Relative Height Error Std: {rel_error_std:.2%}, R²: {r2:.3f}")
-    return bias, bias_std, rel_error, rel_error_std
+    print(f"Height Bias: {bias:.2f} m,  RMSE: {rmse:.2f}, MAPE: {mape:.2%}, R²: {r2:.3f}")
+    return bias, rel_error, rel_error_std
 
 def plot_dbh_height(df, output_folder):
     """
@@ -193,26 +194,6 @@ def plot_dbh_height(df, output_folder):
 
     return
 
-def stem_Qanalysis(df, output_folder):
-    """
-    Analyses the success rate for stem extraction, and compares it to height classes, per species and per dbh class.
-    """
-    stem_cov_avg = np.mean(df["Stem_coverage"])
-    stem_cov_std = np.std(df["Stem_coverage"])
-    plt.figure(figsize=(6, 6))
-    plt.scatter(df["Point Count"], df["Stem_coverage"], alpha=0.5)
-    r2 = r2_score(df["Point Count"], df["Stem_coverage"])
-    plt.text(
-        0.05, 0.95,
-        f"$R^2 = {r2:.3f}$",
-        transform=plt.gca().transAxes,
-        verticalalignment='top'
-    )
-    plt.xlabel("Reference Stem Point Count")
-    plt.ylabel("Estimated Stem Coverage")
-    plt.savefig(f"{output_folder}/stem_coverage.png", dpi=311)
-    print(f"Average Stem Coverage: {stem_cov_avg:.2%}, Stem Coverage Std: {stem_cov_std:.2%}")
-    return stem_cov_avg, stem_cov_std
 
 def plot_dbh_error_vs_height_error(df, output_folder):
     """
@@ -228,7 +209,28 @@ def plot_dbh_error_vs_height_error(df, output_folder):
     # Relative errors
     df["dbh_rel_error"] = (df["dbh"] - df["dbh_ref"]) / df["dbh_ref"]
     df["height_rel_error"] = (df["Height_m"] - df["height_ref"]) / df["height_ref"]
+    good_df = df[(df["dbh_rel_error"].abs() < 0.1) & (df["height_rel_error"].abs() < 0.1)] 
+    print(f"The amount of good trees for error correlation: {len(good_df)}, {len(good_df)/len(df)}")
+    print(f"Group 1: {len(df[df['dbh_rel_error'] > 0.1])}")
+    print(f"Group 2: {len(df[df['dbh_rel_error'] < -0.1])}")
+    print(f"Group 3: {len(df[df['height_rel_error'] > 0.1])}")
+    print(f"Group 4: {len(df[df['height_rel_error'] < -0.1])}")
 
+    print("\nLarge positive DBH error trees:")
+    print(df.loc[df['dbh_rel_error'] > 1,
+             ['ff3d_tile_id', 'dbh_rel_error']])
+
+    print("\nLarge negative DBH error trees:")
+    print(df.loc[df['dbh_rel_error'] < -0.1,
+             ['ff3d_tile_id', 'dbh_rel_error']])
+
+    print("\nLarge positive height error trees:")
+    print(df.loc[df['height_rel_error'] > 0.5,
+             ['ff3d_tile_id', 'height_rel_error']])
+
+    print("\nLarge negative height error trees:")
+    print(df.loc[df['height_rel_error'] < -0.1,
+             ['ff3d_tile_id', 'height_rel_error']])
     # ---------------------------------
     # Absolute error plot
     # ---------------------------------
@@ -251,37 +253,12 @@ def plot_dbh_error_vs_height_error(df, output_folder):
 
     plt.legend()
 
-    slope, intercept, r_value, p_value, std_err = linregress(
-        df["height_error"],
-        df["dbh_error"]
-    )
-
-    x = np.linspace(
-        df["height_error"].min(),
-        df["height_error"].max(),
-        100
-    )
-
-    y = slope * x + intercept
-
-    plt.plot(x, y)
-
-    r2 = r_value**2
-
     plt.axhline(0, linestyle="--", color="gray", linewidth=1)
     plt.axvline(0, linestyle="--", color="gray", linewidth=1)
 
     plt.xlabel("Height Error (m)")
     plt.ylabel("DBH Error (cm)")
     
-
-    plt.text(
-        0.05, 0.95,
-        f"$R^2 = {r2:.3f}$\n$p = {p_value:.3e}$",
-        transform=plt.gca().transAxes,
-        verticalalignment='top'
-    )
-
     plt.tight_layout()
     plt.savefig(f"{output_folder}/dbh_error_vs_height_error.png", dpi=311)
     plt.close()
@@ -290,29 +267,16 @@ def plot_dbh_error_vs_height_error(df, output_folder):
     # Relative error plot
     # ---------------------------------
     plt.figure(figsize=(6, 6))
+    for sp, group in df.groupby("Species_name"):
+        plt.scatter(
+            group["height_rel_error"],
+            group["dbh_rel_error"],
+            alpha=0.5,
+            label=sp,
+            color=species_colors.get(sp, "gray")
+        )
 
-    plt.scatter(
-        df["height_rel_error"],
-        df["dbh_rel_error"],
-        alpha=0.5
-    )
-
-    slope, intercept, r_value, p_value, std_err = linregress(
-        df["height_rel_error"],
-        df["dbh_rel_error"]
-    )
-
-    x = np.linspace(
-        df["height_rel_error"].min(),
-        df["height_rel_error"].max(),
-        100
-    )
-
-    y = slope * x + intercept
-
-    plt.plot(x, y)
-
-    r2 = r_value**2
+    plt.legend()
 
     plt.axhline(0, linestyle="--", color="gray", linewidth=1)
     plt.axvline(0, linestyle="--", color="gray", linewidth=1)
@@ -320,21 +284,12 @@ def plot_dbh_error_vs_height_error(df, output_folder):
     plt.xlabel("Relative Height Error")
     plt.ylabel("Relative DBH Error")
 
-    plt.text(
-        0.05, 0.95,
-        f"$R^2 = {r2:.3f}$\n$p = {p_value:.3e}$",
-        transform=plt.gca().transAxes,
-        verticalalignment='top'
-    )
 
     plt.tight_layout()
     plt.savefig(f"{output_folder}/dbh_rel_error_vs_height_rel_error.png", dpi=311)
     plt.close()
 
-    print(
-        f"DBH vs Height Error Correlation:\n"
-        f"Absolute error R²: {r2:.3f}, p={p_value:.3e}"
-    )
+
 
 def biomass_analysis(df, output_folder):
     """
@@ -349,6 +304,7 @@ def biomass_analysis(df, output_folder):
     rel_error = np.mean(np.abs(biomass - ref_biomass) / ref_biomass)
     rel_error_std = np.std(np.abs(biomass - ref_biomass) / ref_biomass)
     rmse = root_mean_squared_error(ref_biomass, biomass)
+    mape = mean_absolute_percentage_error(ref_biomass, biomass)
     plt.figure(figsize=(6, 6))
     plt.scatter(ref_biomass, biomass, alpha=0.5)
     slope, intercept, r_value, p_value, std_err = linregress(ref_biomass, biomass)
@@ -367,18 +323,19 @@ def biomass_analysis(df, output_folder):
     plt.xlabel("Reference AGB (kg)")
     plt.savefig(f"{output_folder}/biomass_error.png", dpi=311)
 
-    print(f"Biomass Bias: {bias:.2f} kg, Biomass Bias Std: {bias_std:.2f} kg, RMSE: {rmse:.2f}, Relative Biomass Error: {rel_error:.2%}, Relative Biomass Error Std: {rel_error_std:.2%}, R²: {r2:.3f}")
+    print(f"Biomass Bias: {bias:.2f} kg, RMSE: {rmse:.2f}, MAPE: {mape:.2%}, R²: {r2:.3f}")
     return bias, bias_std, rel_error, rel_error_std, r2
 
 
 
 def main():
-    ref = gpd.read_file("/mnt/c/Users/digit/Downloads/Examensarbete/Examensarbete/5.DBH_extraction/matched_trees.gpkg")
-    df = pd.read_csv("/mnt/c/Users/digit/Downloads/Examensarbete/Examensarbete/5.DBH_extraction/biomass_height_distribution_summary_0.2.csv")
+    ref = gpd.read_file("/mnt/c/Users/digit/Downloads/Examensarbete/Examensarbete/4.seg_evaluation/Resultat/matched_trees.gpkg")
+    df = pd.read_csv("/mnt/c/Users/digit/Downloads/Examensarbete/Results/biomass_height_distribution_summary_0.2.csv")
+    #df = pd.read_csv("/mnt/c/Users/digit/Downloads/Examensarbete/Examensarbete/5.Stem_and_DBH_extraction/results/biomass_height_distribution_summary_0.2.csv")
     ref_subset = ref[["ff3d_tile_id", "ff3d_tile_dist", "ff3d_tile_matched", "DBH_Field", "H_TLS", "Species"]]
+    print(df.columns)
     df = df.merge(ref_subset, left_on="TreeID", right_on="ff3d_tile_id", how="left")
     #df = df[df["DBH_Field"] > 10]
-
     df["dbh_ref"] = df["DBH_Field"]
     df["height_ref"] = df["H_TLS"]
     df["Species_name"] = df["Species_x"]
@@ -386,7 +343,9 @@ def main():
     df = df.drop(columns=["DBH_Field", "H_TLS", "DBH_cm_hlayer_0.1", "DBH_cm_hlayer_0.5", "DBH_cm_hlayer_0.05", "Species_x", "Species_y"])
     df["dbh_error"] = df["dbh"] - df["dbh_ref"]
     df["abs_dbh_error"] = np.abs(df["dbh_error"])
-    bad_trees = df[df["abs_dbh_error"] > 10]["ff3d_tile_id"].unique() 
+    output_folder = "/mnt/c/Users/digit/Downloads/tes/"
+    os.makedirs(output_folder, exist_ok=True)
+    #bad_trees = df[df["abs_dbh_error"] > 10]["ff3d_tile_id"].unique() 
     #df = df[~df["ff3d_tile_id"].isin(bad_trees)]
     
     #id_to_species = {1: "Pine", 2: "Spruce", 3: "Birch", 7: "Ädel", 11: "Dead" }
@@ -419,16 +378,14 @@ def main():
         bm_branch[mask] = branch
     df["Biomass_stem_ref"] = bm_stem
     df["Biomass_branch_ref"] = bm_branch
-    output_folder = "/mnt/c/Users/digit/Downloads/tets/"
-    os.makedirs(output_folder, exist_ok=True)
-   
+    
     dbh_extraction_analysis(df, output_folder)
-    #stem_Qanalysis(df,output_folder)
     dbh_analysis(df, output_folder)
     height_analysis(df,output_folder)
+    plot_dbh_error_vs_height_error(df, output_folder)
     plot_dbh_height(df, output_folder)
     biomass_analysis(df, output_folder)
-    plot_dbh_error_vs_height_error(df, output_folder)
+   
     lme(df, output_folder)
     print(f"Analysis complete. Results saved to: {output_folder}")
 

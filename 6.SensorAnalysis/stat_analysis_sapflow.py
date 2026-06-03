@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from matplotlib.patches import Patch
 
 import statsmodels.formula.api as smf
 
@@ -13,8 +14,8 @@ import statsmodels.formula.api as smf
 VOXEL_SIZES = [0.1, 0.2, 0.4]
 
 VOXEL_PARQUET = (
-    "/mnt/c/Users/digit/Downloads/Examensarbete/Results/"
-    "voxel_biomass.parquet"
+    "/mnt/c/Users/digit/Downloads/Examensarbete/Results/saptrees_segment/"
+    "voxel_biomass_saptrees.parquet"
 )
 
 SAPFLOW_CSV = (
@@ -34,6 +35,84 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # ==========================================================
 
 voxels = pd.read_parquet(VOXEL_PARQUET)
+colors = {
+    "stem": "saddlebrown",
+    "foliage": "forestgreen"
+}
+
+for tree_id in sorted(voxels["tree_id"].unique()):
+
+    tree_data = voxels[voxels["tree_id"] == tree_id]
+    voxel_sizes = sorted(tree_data["voxel_size"].unique())
+
+    fig = plt.figure(figsize=(7 * len(voxel_sizes), 7))
+
+    for i, voxel_size in enumerate(voxel_sizes, start=1):
+
+        ax = fig.add_subplot(
+            1, len(voxel_sizes), i,
+            projection="3d"
+        )
+
+        subset = tree_data[tree_data["voxel_size"] == voxel_size]
+
+        # Draw each voxel cube
+        for _, row in subset.iterrows():
+
+            s = row["voxel_size"]
+
+            # Convert center coordinates to cube corner coordinates
+            x0 = row["x"] - s / 2
+            y0 = row["y"] - s / 2
+            z0 = row["z"] - s / 2
+
+            ax.bar3d(
+                x0, y0, z0,
+                s, s, s,
+                color=colors.get(row["component"], "gray"),
+                alpha=0.9,
+                shade=True,
+                linewidth=0
+            )
+
+        # Equal aspect ratio
+        xmin, xmax = subset["x"].min(), subset["x"].max()
+        ymin, ymax = subset["y"].min(), subset["y"].max()
+        zmin, zmax = subset["z"].min(), subset["z"].max()
+
+        max_range = max(
+            xmax - xmin,
+            ymax - ymin,
+            zmax - zmin
+        )
+
+        xmid = (xmin + xmax) / 2
+        ymid = (ymin + ymax) / 2
+        zmid = (zmin + zmax) / 2
+
+        ax.set_xlim(xmid - max_range / 2, xmid + max_range / 2)
+        ax.set_ylim(ymid - max_range / 2, ymid + max_range / 2)
+        ax.set_zlim(zmid - max_range / 2, zmid + max_range / 2)
+
+        ax.set_title(f"Voxel size = {voxel_size} m")
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
+
+        # Better viewing angle
+        ax.view_init(elev=25, azim=45)
+
+    # Shared legend
+    legend_elements = [
+        Patch(facecolor=colors["stem"], label="Stem"),
+        Patch(facecolor=colors["foliage"], label="Foliage")
+    ]
+    fig.legend(handles=legend_elements, loc="upper right")
+
+    #fig.suptitle(f"Tree {tree_id}", fontsize=16)
+    plt.tight_layout()
+    plt.savefig(f"{OUTPUT_DIR}/voxel_data_{tree_id}.png", dpi=300, bbox_inches="tight")
+    plt.close()
 
 sap = pd.read_csv(SAPFLOW_CSV, parse_dates=["TIMESTAMP"])
 
@@ -490,39 +569,6 @@ for voxel_size in VOXEL_SIZES:
         print("Model failed:")
         print(e)
 
-    # ======================================================
-    # 7. INTERACTION MODEL
-    # ======================================================
-
-    print_section("Interaction model")
-
-    try:
-
-        model2 = smf.mixedlm(
-            (
-                "sap_flow ~ "
-                "height * direction_bin * foliage_above" 
-            ),
-            model_df,
-            groups=model_df["tree_id"]
-        )
-
-        result2 = model2.fit()
-
-        print(result2.summary())
-
-        out_path = (
-            f"{OUTPUT_DIR}/"
-            f"interaction_model_{voxel_size}.txt"
-        )
-
-        with open(out_path, "w") as f:
-            f.write(result2.summary().as_text())
-
-    except Exception as e:
-
-        print("Interaction model failed:")
-        print(e)
 
     out_path = (
                 f"{OUTPUT_DIR}/"

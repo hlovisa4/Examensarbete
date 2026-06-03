@@ -8,7 +8,7 @@ library(concaveman)
 # -----------------------------
 # Read Files
 # -----------------------------
-las_file_ff3d_full <- "C:/Users/digit/Downloads/Examensarbete/Results/chm_segmentation/chm_ALS_clipped_to_reflist.las"
+las_file_ff3d_full <- "C:/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/tile_ALS_clipped_to_reflist.las"
 ref_file <- "C:/Users/digit/Downloads/Examensarbete/Data/TreesTowerFoot240829.gpkg"
 
 ref <- st_read(ref_file, quiet = TRUE)
@@ -19,7 +19,7 @@ ref <- st_read(ref_file, quiet = TRUE)
 plot_center_x <- 731337.678
 plot_center_y <- 7134016.31
 
-plot_radius <- 80  # meters
+plot_radius <- 20  # meters
 max_dist <- 1.8
 
 # -----------------------------
@@ -67,6 +67,17 @@ centroids <- df_sub %>%
 centroids_sf <- st_as_sf(
   centroids,
   coords = c("x", "y"),
+  crs = st_crs(ref)
+)
+
+tree_tops <- df_sub %>%
+  group_by(instance_pred) %>%
+  slice_max(order_by = Z, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+tree_tops_sf <- st_as_sf(
+  tree_tops,
+  coords = c("X", "Y"),
   crs = st_crs(ref)
 )
 
@@ -198,6 +209,13 @@ fig <- ggplot() +
     data = centroids_sf,
     color = "red",
     size = 2
+  ) +
+  
+  geom_sf(
+    data = tree_tops_sf,
+    color = "darkgreen",
+    shape = 17,   # triangle
+    size = 2.5
   ) +
   
   # Reference trees

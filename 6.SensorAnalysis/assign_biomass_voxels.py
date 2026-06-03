@@ -10,6 +10,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from calculate_biomass import MarklundBiomass
+from plyfile import PlyData
 
 #Requires biomass_venv!!
 
@@ -155,6 +156,8 @@ def process_tree(stem_path, canopy_path, csv_path, id, voxel_size):
     # Load data
     if not os.path.exists(stem_path) or not os.path.exists(canopy_path):
         print(f"Missing point cloud for {id}: stem={os.path.exists(stem_path)}, canopy={os.path.exists(canopy_path)}")
+        print(f"Stem path: {stem_path}"
+              f"\nCanopy path: {canopy_path}")
         return pd.DataFrame(), [], []
     stem_pc = load_xyz(stem_path)
     foliage_pc = load_xyz(canopy_path)
@@ -197,8 +200,8 @@ def process_tree(stem_path, canopy_path, csv_path, id, voxel_size):
     coverage_top = (stem_top) / (foliage_top )
     print(f"Stem coverage: {coverage_total:.2f}")
 
-    stem_biomass_new = coverage_total * biomass_stem
-    branch_biomass_new = biomass_foliage + (1 - coverage_total) * biomass_stem
+    #stem_biomass_new = coverage_total * biomass_stem
+    #branch_biomass_new = biomass_foliage + (1 - coverage_total) * biomass_stem
     # -----------------------------
     # VOXELIZE
     # -----------------------------
@@ -211,8 +214,8 @@ def process_tree(stem_path, canopy_path, csv_path, id, voxel_size):
     # -----------------------------
     # DISTRIBUTE BIOMASS
     # -----------------------------
-    stem_biomass_vox = distribute_biomass(stem_voxels, stem_biomass_new)
-    foliage_biomass_vox = distribute_biomass(foliage_voxels, branch_biomass_new)
+    stem_biomass_vox = distribute_biomass(stem_voxels, biomass_stem)
+    foliage_biomass_vox = distribute_biomass(foliage_voxels, biomass_foliage)
 
     stem_voxel_df = voxels_to_dataframe(
     stem_biomass_vox,
@@ -326,6 +329,7 @@ def plot_voxel_slices_filled(stem_layers, foliage_layers, voxel_size, max_slices
     plt.savefig(f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/ff3d_segmentation/voxel_slices_{voxel_size}.png", dpi=311)
     plt.close()
 
+
 def plot_voxel_distribution(all_stem_layers, all_foliage_layers, aggregate_bins=False):
     def voxel_counts_per_z(layers, voxel_size):
         z_sorted = sorted(layers.keys())
@@ -411,12 +415,12 @@ if __name__ == "__main__":
 
             biomass_data = pd.concat([biomass_data, biomass_dist], ignore_index=True)
 
-        #biomass_data.to_csv(f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/biomass_height_distribution_summary_{voxel_size}.csv", index=False)
+        biomass_data.to_csv(f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/saptrees_segment/biomass_height_distribution_summary_{voxel_size}.csv", index=False)
     #plot_voxel_distribution(all_stem_layers, all_foliage_layers, aggregate_bins=True)
     all_voxel_data = pd.concat(all_voxel_data, ignore_index=True)
     print(all_voxel_data["direction"].unique())
     all_voxel_data.to_parquet(
-        f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/voxel_biomass.parquet",
+        f"/mnt/c/Users/digit/Downloads/Examensarbete/Results/saptrees_segment/voxel_biomass_saptrees.parquet",
         index=False
     )
 

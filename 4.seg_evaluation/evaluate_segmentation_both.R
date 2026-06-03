@@ -116,16 +116,15 @@ process_las <- function(las_path, ref, max_dist, prefix) {
 res_full <- process_las(las_file_ff3d_full, ref, max_dist, "ff3d_full")
 ff3d_res_full <- res_full$out
 res_full$precision
-
 res_tile <- process_las(las_file_ff3d_tile, ref, max_dist, "ff3d_tile")
 ff3d_res_tile <- res_tile$out
 res_tile$precision
-
+mean(ff3d_res_tile$ff3d_tile_dist[ff3d_res_tile$ff3d_tile_matched == 1])
 
 res_chm <- process_las(las_file_lidr, ref, max_dist, "chm")
 chm_res <- res_chm$out
 res_chm$precision
-
+mean(chm_res$chm_dist[chm_res$chm_matched == 1])
 
 ref <- bind_cols(
   ref,
@@ -191,6 +190,6 @@ ref_clean$n_neighbors_5m <- as.numeric(ref_clean$n_neighbors_5m)
 ref_clean$H_TLS  <- as.numeric(ref_clean$H_TLS)
 
 #Interaction Model
-model_all <- glm(ff3d_tile_matched ~ H_TLS + DBH_Field + n_neighbors_5m + angle_rad , 
+model_all <- glm(ff3d_tile_matched ~ DBH_Field  + n_neighbors_5m + angle_rad , 
                   data = ref_clean, family = binomial)
 summary(model_all)

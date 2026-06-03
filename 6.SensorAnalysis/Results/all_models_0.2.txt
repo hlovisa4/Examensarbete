@@ -1,0 +1,161 @@
+Model for height (tree tree403):
+
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:               sap_flow   R-squared:                       0.673
+Model:                            OLS   Adj. R-squared:                  0.592
+Method:                 Least Squares   F-statistic:                     8.249
+Date:                Mon, 01 Jun 2026   Prob (F-statistic):             0.0454
+Time:                        14:23:46   Log-Likelihood:                 4.1024
+No. Observations:                   6   AIC:                            -4.205
+Df Residuals:                       4   BIC:                            -4.621
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+==============================================================================
+                 coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+Intercept      1.0456      0.107      9.730      0.001       0.747       1.344
+height        -0.0314      0.011     -2.872      0.045      -0.062      -0.001
+==============================================================================
+Omnibus:                          nan   Durbin-Watson:                   2.541
+Prob(Omnibus):                    nan   Jarque-Bera (JB):                0.332
+Skew:                          -0.217   Prob(JB):                        0.847
+Kurtosis:                       1.934   Cond. No.                         17.4
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.Model for height (tree tree408):
+
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:               sap_flow   R-squared:                       0.532
+Model:                            OLS   Adj. R-squared:                  0.416
+Method:                 Least Squares   F-statistic:                     4.556
+Date:                Mon, 01 Jun 2026   Prob (F-statistic):             0.0997
+Time:                        14:23:46   Log-Likelihood:                 5.2429
+No. Observations:                   6   AIC:                            -6.486
+Df Residuals:                       4   BIC:                            -6.902
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+==============================================================================
+                 coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+Intercept      0.6762      0.089      7.610      0.002       0.430       0.923
+height        -0.0193      0.009     -2.134      0.100      -0.044       0.006
+==============================================================================
+Omnibus:                          nan   Durbin-Watson:                   2.156
+Prob(Omnibus):                    nan   Jarque-Bera (JB):                0.315
+Skew:                           0.505   Prob(JB):                        0.854
+Kurtosis:                       2.511   Cond. No.                         17.4
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.Model for direction_bin (tree tree403):
+
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:               sap_flow   R-squared:                       0.034
+Model:                            OLS   Adj. R-squared:                 -0.207
+Method:                 Least Squares   F-statistic:                    0.1414
+Date:                Mon, 01 Jun 2026   Prob (F-statistic):              0.726
+Time:                        14:23:46   Log-Likelihood:                0.84924
+No. Observations:                   6   AIC:                             2.302
+Df Residuals:                       4   BIC:                             1.885
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+=================================================================================
+                    coef    std err          t      P>|t|      [0.025      0.975]
+---------------------------------------------------------------------------------
+Intercept         0.8311      0.149      5.596      0.005       0.419       1.243
+direction_bin    -0.0790      0.210     -0.376      0.726      -0.662       0.504
+==============================================================================
+Omnibus:                          nan   Durbin-Watson:                   1.087
+Prob(Omnibus):                    nan   Jarque-Bera (JB):                0.847
+Skew:                           0.659   Prob(JB):                        0.655
+Kurtosis:                       1.715   Cond. No.                         2.62
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.Model for direction_bin (tree tree408):
+
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:               sap_flow   R-squared:                       0.208
+Model:                            OLS   Adj. R-squared:                  0.010
+Method:                 Least Squares   F-statistic:                     1.049
+Date:                Mon, 01 Jun 2026   Prob (F-statistic):              0.364
+Time:                        14:23:46   Log-Likelihood:                 3.6606
+No. Observations:                   6   AIC:                            -3.321
+Df Residuals:                       4   BIC:                            -3.738
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+=================================================================================
+                    coef    std err          t      P>|t|      [0.025      0.975]
+---------------------------------------------------------------------------------
+Intercept         0.5875      0.093      6.320      0.003       0.329       0.846
+direction_bin    -0.1346      0.131     -1.024      0.364      -0.500       0.230
+==============================================================================
+Omnibus:                          nan   Durbin-Watson:                   0.746
+Prob(Omnibus):                    nan   Jarque-Bera (JB):                0.927
+Skew:                          -0.750   Prob(JB):                        0.629
+Kurtosis:                       1.794   Cond. No.                         2.62
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.Model for foliage_above (tree tree403):
+
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:               sap_flow   R-squared:                       0.198
+Model:                            OLS   Adj. R-squared:                 -0.002
+Method:                 Least Squares   F-statistic:                    0.9886
+Date:                Mon, 01 Jun 2026   Prob (F-statistic):              0.376
+Time:                        14:23:46   Log-Likelihood:                 1.4076
+No. Observations:                   6   AIC:                             1.185
+Df Residuals:                       4   BIC:                            0.7684
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+=================================================================================
+                    coef    std err          t      P>|t|      [0.025      0.975]
+---------------------------------------------------------------------------------
+Intercept         0.0129      0.789      0.016      0.988      -2.178       2.204
+foliage_above     0.0022      0.002      0.994      0.376      -0.004       0.008
+==============================================================================
+Omnibus:                          nan   Durbin-Watson:                   2.142
+Prob(Omnibus):                    nan   Jarque-Bera (JB):                0.231
+Skew:                           0.381   Prob(JB):                        0.891
+Kurtosis:                       2.413   Cond. No.                     2.90e+03
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 2.9e+03. This might indicate that there are
+strong multicollinearity or other numerical problems.Model for foliage_above (tree tree408):
+
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:               sap_flow   R-squared:                       0.731
+Model:                            OLS   Adj. R-squared:                  0.664
+Method:                 Least Squares   F-statistic:                     10.89
+Date:                Mon, 01 Jun 2026   Prob (F-statistic):             0.0299
+Time:                        14:23:46   Log-Likelihood:                 6.9049
+No. Observations:                   6   AIC:                            -9.810
+Df Residuals:                       4   BIC:                            -10.23
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+=================================================================================
+                    coef    std err          t      P>|t|      [0.025      0.975]
+---------------------------------------------------------------------------------
+Intercept         0.3360      0.068      4.964      0.008       0.148       0.524
+foliage_above     0.0004      0.000      3.300      0.030    5.82e-05       0.001
+==============================================================================
+Omnibus:                          nan   Durbin-Watson:                   2.368
+Prob(Omnibus):                    nan   Jarque-Bera (JB):                1.063
+Skew:                           1.030   Prob(JB):                        0.588
+Kurtosis:                       2.891   Cond. No.                     1.08e+03
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 1.08e+03. This might indicate that there are
+strong multicollinearity or other numerical problems.
